@@ -28,6 +28,9 @@ calib-headless:
 		--output configs/example_cam.yaml \
 		--mode linear
 
+baseline:
+	$(PYTHON) scripts/run_hsv_baseline.py --run-id hsv-001
+
 train-seg:
 	$(PYTHON) scripts/train_seg.py --config configs/default.yaml
 

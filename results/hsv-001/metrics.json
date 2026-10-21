@@ -1,0 +1,33 @@
+{
+  "note": "SYNTHETIC RESULTS \u2014 pipeline validation only. Must not appear in a paper or final evaluation.",
+  "synthetic": true,
+  "run_id": "hsv-001",
+  "best_hsv_lower": [
+    90,
+    30,
+    30
+  ],
+  "best_hsv_upper": [
+    120,
+    255,
+    255
+  ],
+  "loso_mean_mae_cm": 0.1631,
+  "eval_all_non_locked_scenes": {
+    "mae_cm": 0.1631,
+    "mae_near_3cm": 0.1998,
+    "flood_precision": 1.0,
+    "flood_recall": 1.0
+  },
+  "mae_per_depth_bin_cm": {
+    "0.0cm": 0.0,
+    "2.0cm": 0.2886,
+    "3.0cm": 0.111,
+    "5.0cm": 0.0808,
+    "10.0cm": 0.174,
+    "20.0cm": 0.3245
+  },
+  "trivial_baseline_mae_cm": 6.6667,
+  "false_flood_rate_negatives": 0.1,
+  "n_negative_frames": 10
+}

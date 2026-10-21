@@ -113,6 +113,28 @@ Each entry: decision made, alternative considered, reason.
 
 ---
 
+## 2026-10-21: Waterline confidence formula
+
+**Decision:** `confidence = continuity_frac × coverage_frac × resolution_factor`
+where `resolution_factor = min(1.0, 0.5 / cm_per_pixel)`.
+
+`continuity_frac` is the inter-column consistency of waterline row estimates:
+`max(0, 1 - std(per_col_waterline_rows) / 20 px)`. A standard deviation greater
+than 10 px (continuity_frac < 0.5) triggers `reason="broken_mask"`.
+
+**Alternative:** Single threshold on per-column water-region fill fraction.
+
+**Reason:** The fill-fraction approach (water in [r, r_g] / span) always yields 1.0
+because the upward contiguous scan by construction finds a fully-water segment.
+Inter-column consistency instead detects the physically important failure mode:
+different columns seeing wildly different waterline heights (reflections, partial
+occlusion, large mask holes), while clean synthetic masks give std ≈ 0 → 1.0.
+The `resolution_factor = min(1.0, 0.5 / s)` penalises coarse resolution where
+3 cm detection is unreliable (reference: 6 px per 3 cm at the minimum usable
+resolution of 0.5 cm/px).
+
+---
+
 ## 2026-10-21: Half-plane water mask in synthetic renderer is a known limitation
 
 **Decision:** Document and accept that the synthetic renderer's water mask is a full-width horizontal half-plane.

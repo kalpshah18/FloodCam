@@ -55,6 +55,7 @@ class ReferenceObject:
 
     known_height_cm: float = 100.0
     pole_x_frac: float = 0.5  # fractional column position in frame [0, 1]
+    pole_width_px: int = 6
 
     @classmethod
     def from_dict(cls, d: dict) -> ReferenceObject:
@@ -130,6 +131,8 @@ class ExperimentConfig:
     weight_decay: float = 1e-4
     hsv_lower: list[int] = field(default_factory=lambda: [90, 50, 50])
     hsv_upper: list[int] = field(default_factory=lambda: [130, 255, 255])
+    hsv_morph_open: int = 0
+    hsv_morph_close: int = 0
     image_size: int = 512
     num_workers: int = 2
 
