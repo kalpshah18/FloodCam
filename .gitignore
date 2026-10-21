@@ -27,6 +27,8 @@ data/*.csv
 results/*/checkpoints/
 results/*/frames/
 results/*/snapshots/
+results/*.db
+*.db
 *.pt
 *.pth
 *.ckpt
