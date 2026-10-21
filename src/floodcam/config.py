@@ -110,7 +110,7 @@ class HealthConfig:
     """Thresholds for frame-level health checks."""
 
     frozen_diff_threshold: float = 5.0
-    frozen_k_frames: int = 3
+    frozen_k_frames: int = 5  # raised from 3: JPEG compression can produce sporadic sub-threshold diffs
     black_luminance_threshold: float = 10.0
     obstruction_laplacian_baseline_frames: int = 30
     obstruction_laplacian_ratio: float = 0.3

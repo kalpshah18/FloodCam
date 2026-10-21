@@ -212,6 +212,28 @@ False. Mixing synthetic and real events in one run is refused.
 
 ---
 
+## 2026-10-21: frozen_k_frames raised from 3 to 5 (A1 regression fix)
+
+**Decision:** `HealthConfig.frozen_k_frames` default is 5 (requires 4 consecutive sub-threshold
+inter-frame diffs before declaring a frame frozen), up from the original 3 (2 consecutive diffs).
+
+**Alternative:** Lower `frozen_diff_threshold` from 5.0 to ~3.0 so JPEG-compressed slightly-varying
+frames no longer cross the threshold.
+
+**Reason:** JPEG save/load (quality=95) compresses subtle per-frame RNG differences in the
+synthetic renderer.  For a 900-frame slow-rise scene, occasional consecutive frame pairs have
+mean |diff| of 4.34–4.59 — just below the 5.0 threshold — producing 2–3 false "frozen"
+detections per run.  These are isolated one-off pairs (max count=2), not sustained freezes.
+A truly frozen camera produces diff=0.00 for many consecutive frames (count >> 10 in tests).
+Raising k to 5 requires 4 consecutive sub-threshold pairs before flagging.  JPEG artifacts
+are sporadic and never reach count=4; genuine frozen cameras stay frozen for many minutes.
+Lowering the threshold to 3.0 would also work but risks missing near-frozen real cameras
+with slight compression noise.  The k increase is more conservative and domain-appropriate.
+Verified: health_fault frozen segment (diff=0.00 for 10 frames) still flagged at t=75 (k=5)
+vs t=73 (k=3) — 2 frames later, still within the same fault window.
+
+---
+
 ## 2026-10-21: Alert deduplication by transition string
 
 **Decision:** A new alert row is written only when the transition string changes from the previous

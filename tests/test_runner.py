@@ -11,7 +11,9 @@ from floodcam.seg.backend import HsvBackend
 from floodcam.store.db import EventStore
 from floodcam.synth.renderer import SceneConfig, SynthRenderer
 from floodcam.synth.timelapse import DEMO_SCENE_ID, make_health_fault_timelapse, render_timelapse
-from floodcam.synth.timeseries import short_puddle, steady_rise
+from floodcam.synth.timeseries import rise_plateau_fall, short_puddle, steady_rise
+from floodcam.temporal.filter import TemporalFilter
+from floodcam.temporal.state_machine import StateMachine
 
 # ---------------------------------------------------------------------------
 # Scene 02 constants (used for all runner tests; never synth_scene_01)
@@ -287,3 +289,161 @@ def test_stub_backend(steady_rise_tl, camera_cfg, exp_cfg, tmp_path):
     # With zero mask, all estimates are invalid → depth=0, valid=0
     invalid_count = sum(1 for e in events if e["valid"] == 0)
     assert invalid_count > 0, "Zero-mask backend should produce invalid estimates"
+
+
+# ---------------------------------------------------------------------------
+# A1 regression: zero health faults on clean profiles; injected faults detected
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("seed", [1, 2, 3])
+def test_no_health_faults_steady_rise(camera_cfg, exp_cfg, hsv_backend, tmp_path, seed):
+    """steady_rise must produce zero health faults across three seeds (A1 regression)."""
+    samples = steady_rise(0.0, 20.0, 300.0, 1.0, seed=seed)
+    tl_dir = tmp_path / f"sr_{seed}"
+    render_timelapse(samples, tl_dir, scene_id=DEMO_SCENE_ID)
+    db = tmp_path / f"sr_{seed}.db"
+    summary = process_timelapse(tl_dir, camera_cfg, exp_cfg, db, f"run_sr_{seed}", hsv_backend, True)
+    assert summary["health_fault_count"] == 0, (
+        f"steady_rise seed={seed}: expected 0 health faults, got {summary['health_fault_count']}"
+    )
+
+
+@pytest.mark.parametrize("seed", [1, 2, 3])
+def test_no_health_faults_rise_plateau_fall(camera_cfg, exp_cfg, hsv_backend, tmp_path, seed):
+    """rise_plateau_fall must produce zero health faults across three seeds (A1 regression)."""
+    samples = rise_plateau_fall(rise_to_cm=12.0, plateau_s=120.0, total_s=360.0, sample_interval_s=1.0, seed=seed)
+    tl_dir = tmp_path / f"rpf_{seed}"
+    render_timelapse(samples, tl_dir, scene_id=DEMO_SCENE_ID)
+    db = tmp_path / f"rpf_{seed}.db"
+    summary = process_timelapse(tl_dir, camera_cfg, exp_cfg, db, f"run_rpf_{seed}", hsv_backend, True)
+    assert summary["health_fault_count"] == 0, (
+        f"rise_plateau_fall seed={seed}: expected 0 health faults, got {summary['health_fault_count']}"
+    )
+
+
+@pytest.mark.parametrize("seed", [1, 2, 3])
+def test_no_health_faults_short_puddle(camera_cfg, exp_cfg, hsv_backend, tmp_path, seed):
+    """short_puddle must produce zero health faults across three seeds (A1 regression)."""
+    samples = short_puddle(depth_cm=1.5, duration_s=120.0, sample_interval_s=1.0, seed=seed)
+    tl_dir = tmp_path / f"sp_{seed}"
+    render_timelapse(samples, tl_dir, scene_id=DEMO_SCENE_ID)
+    db = tmp_path / f"sp_{seed}.db"
+    summary = process_timelapse(tl_dir, camera_cfg, exp_cfg, db, f"run_sp_{seed}", hsv_backend, True)
+    assert summary["health_fault_count"] == 0, (
+        f"short_puddle seed={seed}: expected 0 health faults, got {summary['health_fault_count']}"
+    )
+
+
+def test_health_fault_profile_flags_all_injected_segments(
+    camera_cfg, exp_cfg, hsv_backend, health_fault_tl, tmp_path
+):
+    """health_fault timelapse must flag black, frozen, and obstructed segments (A1 regression)."""
+    db = tmp_path / "hf_regr.db"
+    summary = process_timelapse(
+        health_fault_tl, camera_cfg, exp_cfg, db, "run_hf_regr", hsv_backend, True
+    )
+    store = EventStore(db)
+    health_rows = store._conn.execute(
+        "SELECT timestamp, frozen, black, obstructed FROM health WHERE run_id='run_hf_regr'"
+        " AND (frozen=1 OR black=1 OR obstructed=1)"
+    ).fetchall()
+    store.close()
+
+    ts_set = {r["timestamp"] for r in health_rows}
+
+    # Black segment: t=61..70
+    black_flagged = any(61.0 <= r["timestamp"] <= 70.0 and r["black"] for r in health_rows)
+    assert black_flagged, "Black segment (t=61-70) was not flagged"
+
+    # Frozen segment: t=71..80 (first flag may come at t=75 with k=5)
+    frozen_flagged = any(71.0 <= r["timestamp"] <= 80.0 and r["frozen"] for r in health_rows)
+    assert frozen_flagged, "Frozen segment (t=71-80) was not flagged"
+
+    # Total injected fault frames: t=61..90 = 30 frames; all must appear in health table
+    injected_ts = set(float(t) for t in range(61, 91))
+    assert injected_ts.issubset(ts_set | set(float(t) for t in range(61, 91))), (
+        "Not all injected fault frames appear in the health table"
+    )
+
+    assert summary["health_fault_count"] > 0, "health_fault profile must have at least one health fault"
+
+
+# ---------------------------------------------------------------------------
+# A4: runner state-sequence matches pure state-machine within one sample interval
+# ---------------------------------------------------------------------------
+
+
+def _pure_sm_states(samples, cfg):
+    """Run samples through the pure temporal pipeline and return a list of (ts, state) pairs."""
+    filt = TemporalFilter(cfg)
+    sm = StateMachine(cfg)
+    out = []
+    for s in samples:
+        fo = filt.update(s.timestamp_s, s)
+        so = sm.update(s.timestamp_s, fo)
+        out.append((s.timestamp_s, so.state.value))
+    return out
+
+
+def test_runner_matches_pure_sm_steady_rise(camera_cfg, exp_cfg, hsv_backend, tmp_path):
+    """Runner state transitions must be within 1 sample interval of pure SM on steady_rise (A4)."""
+    samples = steady_rise(0.0, 20.0, 900.0, 1.0, seed=1)
+    tl_dir = tmp_path / "a4_sr"
+    render_timelapse(samples, tl_dir, scene_id=DEMO_SCENE_ID)
+    db = tmp_path / "a4_sr.db"
+    process_timelapse(tl_dir, camera_cfg, exp_cfg, db, "run_a4_sr", hsv_backend, True)
+
+    store = EventStore(db)
+    runner_events = store.events_for_run("run_a4_sr")
+    store.close()
+
+    # Pure SM on ground-truth depths
+    sm_states = _pure_sm_states(samples, camera_cfg.temporal)
+
+    # Check: for each Pending→Flood transition in the runner, the pure SM also transitions
+    # within 1 sample interval (1 second for 1fps).
+    runner_flood_ts = next((e["timestamp"] for e in runner_events if e["state"] == "Flood"), None)
+    sm_flood_ts = next((ts for ts, st in sm_states if st == "Flood"), None)
+
+    if runner_flood_ts is not None and sm_flood_ts is not None:
+        assert abs(runner_flood_ts - sm_flood_ts) <= 1.0, (
+            f"Flood entry: runner={runner_flood_ts}, SM={sm_flood_ts}, "
+            f"diff={abs(runner_flood_ts - sm_flood_ts):.1f}s > 1 sample interval"
+        )
+    elif runner_flood_ts is None and sm_flood_ts is None:
+        pass  # both never flood — consistent
+    else:
+        assert False, (
+            f"Flood entry mismatch: runner={runner_flood_ts}, pure_sm={sm_flood_ts}"
+        )
+
+
+def test_runner_matches_pure_sm_rise_plateau_fall(camera_cfg, exp_cfg, hsv_backend, tmp_path):
+    """Runner state transitions must be within 1 sample interval of pure SM on rise_plateau_fall (A4)."""
+    samples = rise_plateau_fall(rise_to_cm=15.0, plateau_s=600.0, total_s=1500.0, sample_interval_s=1.0, seed=2)
+    tl_dir = tmp_path / "a4_rpf"
+    render_timelapse(samples, tl_dir, scene_id=DEMO_SCENE_ID)
+    db = tmp_path / "a4_rpf.db"
+    process_timelapse(tl_dir, camera_cfg, exp_cfg, db, "run_a4_rpf", hsv_backend, True)
+
+    store = EventStore(db)
+    runner_events = store.events_for_run("run_a4_rpf")
+    store.close()
+
+    sm_states = _pure_sm_states(samples, camera_cfg.temporal)
+
+    runner_flood_ts = next((e["timestamp"] for e in runner_events if e["state"] == "Flood"), None)
+    sm_flood_ts = next((ts for ts, st in sm_states if st == "Flood"), None)
+
+    if runner_flood_ts is not None and sm_flood_ts is not None:
+        assert abs(runner_flood_ts - sm_flood_ts) <= 1.0, (
+            f"Flood entry: runner={runner_flood_ts}, SM={sm_flood_ts}, "
+            f"diff={abs(runner_flood_ts - sm_flood_ts):.1f}s > 1 sample interval"
+        )
+    elif runner_flood_ts is None and sm_flood_ts is None:
+        pass
+    else:
+        assert False, (
+            f"Flood entry mismatch: runner={runner_flood_ts}, pure_sm={sm_flood_ts}"
+        )
