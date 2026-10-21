@@ -217,17 +217,36 @@ def test_steady_rise_reaches_flood_after_persistence():
 
 
 def test_oscillation_no_chatter():
-    # Use period_s=200 → ~3 full cycles in 600 s → at most ~6 Normal↔Pending transitions.
-    # The primary check is that Flood is never reached; the secondary check bounds chatter.
-    cfg = _default_cfg(filter_window_samples=5, trend_window_minutes=2.0)
+    # center=3.0, amplitude=1.5 → depth swings [1.5, 4.5] cm.
+    # 4.5 > trigger_cm=3.5 → Normal→Pending is correct behavior.
+    # 1.5 < clear_cm=2.5 → Pending→Normal is correct behavior.
+    # Normal↔Pending transitions are expected and correct — NOT a bug.
+    # The only alert-safety properties are:
+    #   1. Flood is never reached (persistence=5 min >> period=60 s).
+    #   2. No individual Pending dwell reaches persistence_minutes.
+    cfg = _default_cfg(filter_window_samples=5, trend_window_minutes=2.0, persistence_minutes=5.0)
     samples = oscillation_around_threshold(
-        center_cm=3.0, amplitude_cm=1.5, period_s=200.0, duration_s=600.0, seed=3
+        center_cm=3.0, amplitude_cm=1.5, period_s=60.0, duration_s=600.0, seed=3
     )
     outputs = _run_pipeline(samples, cfg)
     states = [o.state for o in outputs]
-    assert FloodState.Flood not in states, "Oscillation must never reach Flood (persistence prevents it)"
-    transitions = [o.transition for o in outputs if o.transition is not None]
-    assert len(transitions) <= 8, f"Too many transitions (chatter): {len(transitions)}"
+
+    assert FloodState.Flood not in states, (
+        "Flood must never be reached — persistence (5 min) exceeds oscillation period (60 s)"
+    )
+    # Verify no Pending dwell reaches persistence_minutes
+    persistence_s = cfg.persistence_minutes * 60.0
+    pending_start: Optional[float] = None
+    for o, s in zip(outputs, samples):
+        if o.state == FloodState.Pending and pending_start is None:
+            pending_start = s.timestamp_s
+        elif o.state != FloodState.Pending:
+            pending_start = None
+        if pending_start is not None:
+            dwell = s.timestamp_s - pending_start
+            assert dwell < persistence_s, (
+                f"Pending dwell {dwell:.1f} s reached persistence {persistence_s:.0f} s"
+            )
 
 
 def test_spike_never_leaves_normal():
@@ -355,6 +374,33 @@ def test_dropout_gap_sets_stale():
             recovered = True
     assert stale_seen, "stale=True should be seen during/after the gap"
     assert recovered, "stale should reset after gap ends"
+
+
+def test_dropout_gap_cannot_manufacture_flood():
+    # Wall-time counting: pending_since is not reset on gap.
+    # Safety holds because: (1) stale blocks transitions during gap;
+    # (2) rate=None after gap blocks Pending→Flood until history rebuilds.
+    # A gap of 400 s (>> persistence=300 s) cannot manufacture a Flood.
+    cfg = _default_cfg(max_gap_seconds=30.0, persistence_minutes=5.0, trend_window_minutes=5.0)
+    samples: list[SynthSample] = []
+    # Phase 1: 10 s at depth=5.0 (above trigger → Pending)
+    for i in range(10):
+        samples.append(SynthSample(float(i), 5.0))
+    # Phase 2: 400 s gap (valid=False — camera dropout)
+    for i in range(400):
+        samples.append(SynthSample(10.0 + float(i), 5.0, valid=False))
+    # Phase 3: 30 s back at depth=5.0 (still Pending, rate=None rebuilding)
+    for i in range(30):
+        samples.append(SynthSample(410.0 + float(i), 5.0))
+
+    outputs = _run_pipeline(samples, cfg)
+    states = [o.state for o in outputs]
+    assert FloodState.Flood not in states, (
+        "A dropout gap must not manufacture a Flood via wall-time expiry alone"
+    )
+    # First sample after gap must be stale
+    post_gap_idx = 10 + 400  # index 410
+    assert outputs[post_gap_idx].stale, "First sample after gap must be stale"
 
 
 def test_flood_never_goes_directly_to_normal():

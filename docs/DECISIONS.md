@@ -160,3 +160,31 @@ Key choices:
 **Reason:** The synthetic mask is intentionally simple to make unit tests deterministic and geometry-based. It is sufficient for calibration tests and pipeline integration tests. However, segmentation metrics (IoU, F1) on synthetic masks are trivially ~100% because there is no boundary noise. This is documented in CALIBRATION.md and must not be reported as a result — only real-data masks count for segmentation evaluation.
 
 ---
+
+## 2026-10-21: Oscillation and hysteresis behavior
+
+**Finding:** `oscillation_around_threshold(center=3.0, amplitude=1.5)` swings depth [1.5, 4.5] cm.
+Since 4.5 > trigger_cm (3.5) and 1.5 < clear_cm (2.5), Normal↔Pending transitions are **correct
+behavior** — not chatter. The test verifies alert-safety properties: Flood never reached (60 s
+oscillation period << 5 min persistence) and no single Pending dwell approaches persistence.
+
+An earlier test used `period_s=200` to cap transition count at ≤8; this was a workaround that
+obscured correct behavior. The test was rewritten to use the default 60 s period and assert
+the meaningful properties only.
+
+---
+
+## 2026-10-21: Pending timer across a stale gap — wall-time counting
+
+**Decision:** `pending_since` counts wall time including dropout gaps. A gap does not reset the timer.
+
+**Alternative:** Reset `pending_since` on gap (conservative; timer restarts after dropout).
+
+**Reason:** Two safeguards make wall-time counting safe:
+(1) `stale=True` during and immediately after the gap → no Pending→Flood transition can fire;
+(2) `rate=None` after a gap (insufficient history) → the `rate > falling_slope` check fails,
+blocking the transition until enough data rebuilds.
+Resetting the timer would unfairly delay a legitimate Flood declaration after a brief camera
+dropout during a real flood event, which is worse than the alternative.
+
+---
