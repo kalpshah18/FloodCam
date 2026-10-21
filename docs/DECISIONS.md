@@ -81,3 +81,44 @@ Each entry: decision made, alternative considered, reason.
 **Reason:** Real-data splits must be immutable once generated. Mixing synthetic LOSO folds into the same file would force regeneration of real splits whenever synthetic parameters change. Separate files keep the two regimes independent and prevent accidental overwrite.
 
 ---
+
+## 2026-10-21: sigma_s definition for LinearCalib
+
+**Decision:** `sigma_s` is the OLS standard error of the slope `a` (not sigma of the scale as a separate fit):
+`MSE = sum(residuals²) / (n−2)` for n > 2; `sigma_s = sqrt(MSE / sum((v_i − v_mean)²))`.
+
+**Alternative:** Bootstrap sigma_s from 100 resamples; or define as half the calib residual range.
+
+**Reason:** OLS std error is exact for Gaussian residuals, produces a closed-form formula with well-understood propagation into the depth uncertainty equation, and costs nothing extra. Bootstrap is more general but expensive and unnecessary for the small (~5-point) calibration sets used here.
+
+---
+
+## 2026-10-21: Linear mode for tilt < 15°, homography for tilt ≥ 15°
+
+**Decision:** Linear calibration (`h = a·v + b`) is recommended for camera tilt < ~15°. Homography with a 2D calibration board is required for higher tilts.
+
+**Alternative:** Always use homography; linear is never recommended.
+
+**Reason:** For a 20° tilt scene with calib marks at [0,10,20,30,40] cm, the linear model has ~0.3 cm noiseless error at depths 2–3 cm (the flood threshold zone). Homography achieves < 0.01 cm. Linear is simpler to annotate (pole-only marks), but users must understand it is approximate. The annotation CLI enforces ≥ 2 points (linear) and ≥ 4 non-collinear 2D points (homography).
+
+---
+
+## 2026-10-21: Calibration fit has no access to evaluation labels (by construction)
+
+**Decision:** `LinearCalib.fit()` and `HomographyCalib.fit()` accept only explicit `(pixel_row, height_cm)` or `(u, v, x_cm, h_cm)` pairs. No frame data, manifest rows, or depth labels are passed in.
+
+**Alternative:** Pass a manifest and let fit() filter calibration-tagged frames internally.
+
+**Reason:** Data-flow isolation prevents accidental leakage of evaluation-frame depth labels into calibration. The tight API signature makes this obvious and testable. The annotation CLI is the only place that reads frame data (for interactive display only, not for fitting).
+
+---
+
+## 2026-10-21: Half-plane water mask in synthetic renderer is a known limitation
+
+**Decision:** Document and accept that the synthetic renderer's water mask is a full-width horizontal half-plane.
+
+**Alternative:** Render a more realistic mask with occlusion, curved surface, and texture variation.
+
+**Reason:** The synthetic mask is intentionally simple to make unit tests deterministic and geometry-based. It is sufficient for calibration tests and pipeline integration tests. However, segmentation metrics (IoU, F1) on synthetic masks are trivially ~100% because there is no boundary noise. This is documented in CALIBRATION.md and must not be reported as a result — only real-data masks count for segmentation evaluation.
+
+---

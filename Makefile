@@ -4,7 +4,7 @@
 PYTHON := python
 PYTEST := python -m pytest
 
-.PHONY: setup test test-fast synth-demo train-seg eval dashboard lint format clean
+.PHONY: setup test test-fast synth-demo calib-headless train-seg eval dashboard lint format clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -20,6 +20,13 @@ synth-demo:
 	$(PYTHON) scripts/generate_synthetic_splits.py \
 		--manifest data/synthetic/manifest.jsonl \
 		--seed 42 --force
+
+calib-headless:
+	$(PYTHON) -m floodcam.calib.annotate \
+		--points-json configs/example_calib_points.json \
+		--camera-id example_cam \
+		--output configs/example_cam.yaml \
+		--mode linear
 
 train-seg:
 	$(PYTHON) scripts/train_seg.py --config configs/default.yaml

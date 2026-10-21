@@ -39,6 +39,8 @@ class HysteresisConfig:
 class CalibrationConfig:
     mode: str = "linear"  # "linear" | "homography"
     scale_cm_per_px: Optional[float] = None
+    intercept_cm: Optional[float] = None       # b in h = a*v + b
+    sigma_s: Optional[float] = None            # OLS std error of slope (cm/px)
     reference_points: list[list[float]] = field(default_factory=list)
     homography_matrix: Optional[list[list[float]]] = None
 
@@ -107,6 +109,10 @@ class CameraConfig:
         with Path(path).open() as f:
             d = yaml.safe_load(f) or {}
         return cls.from_dict(d)
+
+    def save(self, path: Path | str) -> None:
+        with Path(path).open("w") as f:
+            yaml.dump(asdict(self), f, default_flow_style=False, sort_keys=True)
 
     def config_hash(self) -> str:
         blob = json.dumps(asdict(self), sort_keys=True).encode()
