@@ -1,0 +1,34 @@
+# Per-camera configuration template.
+# Copy and rename for each camera, e.g. configs/cam_courtyard.yaml
+
+camera_id: cam_template
+description: "Template camera — fill in before first use"
+fps_sample: 1  # frames to process per second of source video
+
+roi:
+  x: 0          # pixels from left
+  y: 0          # pixels from top
+  w: 640        # width in pixels
+  h: 480        # height in pixels
+
+reference_object:
+  known_height_cm: 100.0   # total visible height of the reference pole/marking
+  pole_x_frac: 0.5         # fractional column position of pole centre [0,1]
+
+calibration:
+  mode: linear             # linear | homography
+  scale_cm_per_px: null    # filled by scripts/calib_click.py
+  reference_points: []     # [[px_x, px_y, real_cm], ...] filled by calib tool
+  homography_matrix: null  # 3x3 matrix, filled by calib tool if mode=homography
+
+severity:
+  advisory_cm: 3.0
+  warning_cm: 10.0
+  severe_cm: 25.0
+  critical_cm: 50.0
+  rate_escalation_cm_per_10min: 5.0
+
+hysteresis:
+  trigger_cm: 3.5       # declare flood when depth exceeds this
+  clear_cm: 2.5         # clear flood when depth drops below this
+  persistence_min: 5.0  # must exceed trigger for this many minutes before Flood state

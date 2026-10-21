@@ -1,0 +1,14 @@
+# Default experiment configuration
+name: default
+model: hsv_baseline   # hsv_baseline | segformer_b0 | segformer_b1 | cnn_classifier
+seed: 42
+batch_size: 8
+epochs: 20
+lr: 1.0e-4
+weight_decay: 1.0e-4
+image_size: 512
+num_workers: 2
+
+# HSV water-detection thresholds (hue 90-130 = blue-green range)
+hsv_lower: [90, 50, 50]
+hsv_upper: [130, 255, 255]

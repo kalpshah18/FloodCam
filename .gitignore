@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.ruff_cache/
+
+# Data — only splits/ and data/README.md are tracked
+data/raw/
+data/processed/
+data/manifest.json
+data/manifest_*.json
+data/*.csv
+
+# Results — track small summary files, not large binaries
+results/*/checkpoints/
+results/*/frames/
+results/*/snapshots/
+*.pt
+*.pth
+*.ckpt
+*.h5
+
+# Secrets / credentials
+.env
+*.env
+*.env.*
+secrets/
+credentials/
+.streamlit/secrets.toml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter (never commit notebooks)
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log
+runs/
