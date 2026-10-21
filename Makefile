@@ -4,7 +4,7 @@
 PYTHON := python
 PYTEST := python -m pytest
 
-.PHONY: setup test test-fast synth-demo calib-headless baseline temporal-demo run-demo train-seg eval dashboard lint format clean
+.PHONY: setup test test-fast synth-demo calib-headless baseline temporal-demo run-demo run-demo-multi train-seg eval dashboard lint format clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -37,6 +37,9 @@ temporal-demo:
 run-demo:
 	$(PYTHON) scripts/run_demo.py --run-id run-001
 
+run-demo-multi:
+	$(PYTHON) scripts/run_demo_multi.py --run-id demo-multi-001
+
 train-seg:
 	$(PYTHON) scripts/train_seg.py --config configs/default.yaml
 
@@ -44,6 +47,7 @@ eval:
 	$(PYTHON) scripts/eval.py --config configs/default.yaml
 
 dashboard:
+	$(PYTHON) scripts/run_demo_multi.py --run-id demo-multi-001
 	streamlit run app/dashboard.py
 
 lint:

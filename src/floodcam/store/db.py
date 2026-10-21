@@ -239,3 +239,46 @@ class EventStore:
         return self._conn.execute(
             "SELECT * FROM runs ORDER BY started_at DESC"
         ).fetchall()
+
+    def events_for_run_up_to(self, run_id: str, cursor_ts: float) -> list[sqlite3.Row]:
+        """Return all events for a run at or before cursor_ts."""
+        return self._conn.execute(
+            "SELECT * FROM events WHERE run_id = ? AND timestamp <= ? ORDER BY timestamp",
+            (run_id, cursor_ts),
+        ).fetchall()
+
+    def alerts_for_run_up_to(self, run_id: str, cursor_ts: float) -> list[sqlite3.Row]:
+        """Return all alerts for a run at or before cursor_ts."""
+        return self._conn.execute(
+            "SELECT * FROM alerts WHERE run_id = ? AND timestamp <= ? ORDER BY timestamp",
+            (run_id, cursor_ts),
+        ).fetchall()
+
+    def health_for_run(self, run_id: str) -> list[sqlite3.Row]:
+        """Return all health rows for a run, ordered by timestamp."""
+        return self._conn.execute(
+            "SELECT * FROM health WHERE run_id = ? ORDER BY timestamp",
+            (run_id,),
+        ).fetchall()
+
+    def health_for_run_up_to(self, run_id: str, cursor_ts: float) -> list[sqlite3.Row]:
+        """Return all health rows for a run at or before cursor_ts."""
+        return self._conn.execute(
+            "SELECT * FROM health WHERE run_id = ? AND timestamp <= ? ORDER BY timestamp",
+            (run_id, cursor_ts),
+        ).fetchall()
+
+    def cameras_for_run(self, run_id: str) -> list[str]:
+        """Return distinct camera_ids that have events in this run."""
+        rows = self._conn.execute(
+            "SELECT DISTINCT camera_id FROM events WHERE run_id = ? ORDER BY camera_id",
+            (run_id,),
+        ).fetchall()
+        return [r["camera_id"] for r in rows]
+
+    def run_by_id(self, run_id: str) -> Optional[sqlite3.Row]:
+        """Return a single run row, or None if not found."""
+        return self._conn.execute(
+            "SELECT * FROM runs WHERE run_id = ?",
+            (run_id,),
+        ).fetchone()
