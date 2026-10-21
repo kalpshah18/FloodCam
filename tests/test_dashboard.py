@@ -327,18 +327,63 @@ def test_empty_db_snapshot(empty_db):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(reason="AppTest needs headless browser or st.testing stub; skipped if not available")
-def test_apptest_smoke():
-    """Streamlit AppTest smoke: app runs on demo DB without exceptions."""
-    try:
-        from streamlit.testing.v1 import AppTest
-    except ImportError:
-        pytest.skip("streamlit.testing.v1 not available")
+_APP_PATH = Path(__file__).parent.parent / "app" / "dashboard.py"
 
-    app_path = Path(__file__).parent.parent / "app" / "dashboard.py"
-    at = AppTest.from_file(str(app_path))
-    at.run(timeout=30)
-    assert not at.exception, f"Dashboard raised exception: {at.exception}"
+
+def _run_app(db_path: Path):
+    """Run the dashboard headless (no browser) with the DB path text input set."""
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(str(_APP_PATH), default_timeout=60)
+    at.run()
+    at.sidebar.text_input[0].set_value(str(db_path))
+    at.run()
+    return at
+
+
+def _texts(elements) -> str:
+    return "\n".join(str(e.value) for e in elements)
+
+
+def test_apptest_smoke(fixture_db):
+    """Dashboard runs headless on a fixture DB: no exception, banner, run list."""
+    db_path, run_id, cam_id, _ = fixture_db
+    at = _run_app(db_path)
+    assert not at.exception, f"Dashboard raised: {[e.value for e in at.exception]}"
+    assert "SYNTHETIC DATA" in _texts(at.warning)
+    run_box = next(sb for sb in at.sidebar.selectbox if sb.key == "run_selector")
+    assert run_id in run_box.options
+
+
+def test_apptest_empty_db_renders_placeholder(empty_db):
+    at = _run_app(empty_db)
+    assert not at.exception
+    assert "No runs found" in _texts(at.sidebar.warning)
+    assert "Select a run" in _texts(at.info)
+
+
+def test_apptest_missing_db_file_renders_placeholder(tmp_path):
+    at = _run_app(tmp_path / "does_not_exist.db")
+    assert not at.exception
+    assert "DB file not found" in _texts(at.sidebar.warning)
+    assert "Select a run" in _texts(at.info)
+
+
+def test_apptest_missing_snapshot_renders_placeholder(tmp_path):
+    db_path = tmp_path / "nosnap.db"
+    store = EventStore(db_path)
+    store.upsert_run("r1", "synthetic", "c1", "abc", "deadbeef", 0.0, True)
+    for t in range(5):
+        store.insert_event(
+            run_id="r1", camera_id="c1", timestamp=float(t), state="Normal",
+            depth_cm=0.5, severity_class="Normal", confidence=0.9,
+            rate_cm_per_10min=0.0, snapshot_path=str(tmp_path / "gone.png"),
+            model_version="m", config_hash="abc", synthetic=True,
+        )
+    store.close()
+    at = _run_app(db_path)
+    assert not at.exception
+    assert "No snapshot available" in _texts(at.info)
 
 
 def test_dashboard_file_exists_and_data_layer_importable():
