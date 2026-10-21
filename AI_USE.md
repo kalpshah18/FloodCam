@@ -5,7 +5,7 @@ This project was developed with assistance from Claude Code (Claude Sonnet 4.6, 
 ## Kinds of assistance
 
 - **Scaffolding**: Repo structure, boilerplate Python packages, Makefile, config system.
-- **Code generation**: Config dataclasses, split generation script, test fixtures, seeding utility, synthetic renderer, manifest schema, LOSO split generator, calibration module (LinearCalib OLS, HomographyCalib normalized DLT, depth uncertainty propagation, annotation CLI), HSV baseline mask, waterline detection, depth estimator (M4), temporal filter, state machine, severity classification (M5).
+- **Code generation**: Config dataclasses, split generation script, test fixtures, seeding utility, synthetic renderer, manifest schema, LOSO split generator, calibration module (LinearCalib OLS, HomographyCalib normalized DLT, depth uncertainty propagation, annotation CLI), HSV baseline mask, waterline detection, depth estimator (M4), temporal filter, state machine, severity classification (M5), SQLite store, runner, health checks, timelapse renderer (M6).
 - **Documentation**: DECISIONS.md entries, protocol stubs.
 
 ## External code and model weights

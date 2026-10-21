@@ -188,3 +188,39 @@ Resetting the timer would unfairly delay a legitimate Flood declaration after a 
 dropout during a real flood event, which is worse than the alternative.
 
 ---
+
+## 2026-10-21: Runner uses timelapse-dir source only (video deferred)
+
+**Decision:** Milestone 6 runner reads from a timelapse directory (timestamps.json + frames/*.jpg).
+Video (RTSP or file) is deferred to a later milestone.
+
+**Alternative:** Implement video decoding immediately (cv2.VideoCapture).
+
+**Reason:** Timelapse dirs are deterministic, testable without a video file, and sufficient for
+all current evaluation needs. Adding video decoding now would introduce timestamp extraction
+complexity without benefiting the current research question.
+
+---
+
+## 2026-10-21: Synthetic flag must be set explicitly; runner refuses to mix
+
+**Decision:** The `synthetic` column on every event row must match the run's declared flag.
+Timelapse sources auto-set synthetic=True (via timestamps.json). Any other source defaults to
+False. Mixing synthetic and real events in one run is refused.
+
+**Reason:** Accidental mixing would contaminate real-data runs with synthetic results.
+
+---
+
+## 2026-10-21: Alert deduplication by transition string
+
+**Decision:** A new alert row is written only when the transition string changes from the previous
+alert in a run.
+
+**Alternative:** Alert on every state transition regardless of deduplication.
+
+**Reason:** Prevents flooding the alert table if the state machine rapidly cycles through the
+same pair of states (e.g., Normal→Pending→Normal cycles near the threshold). Each unique
+transition pattern fires once per occurrence in the natural flow.
+
+---

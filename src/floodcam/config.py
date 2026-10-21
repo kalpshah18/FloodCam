@@ -106,6 +106,26 @@ class TemporalConfig:
 
 
 @dataclass
+class HealthConfig:
+    """Thresholds for frame-level health checks."""
+
+    frozen_diff_threshold: float = 5.0
+    frozen_k_frames: int = 3
+    black_luminance_threshold: float = 10.0
+    obstruction_laplacian_baseline_frames: int = 30
+    obstruction_laplacian_ratio: float = 0.3
+    offline_timeout_seconds: float = 30.0
+
+    def __post_init__(self) -> None:
+        if self.frozen_diff_threshold < 0:
+            raise ValueError("frozen_diff_threshold must be non-negative")
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "HealthConfig":
+        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
+
+
+@dataclass
 class CameraConfig:
     camera_id: str = "cam_default"
     description: str = ""
@@ -116,6 +136,7 @@ class CameraConfig:
     severity: SeverityThresholds = field(default_factory=SeverityThresholds)
     hysteresis: HysteresisConfig = field(default_factory=HysteresisConfig)
     temporal: TemporalConfig = field(default_factory=TemporalConfig)
+    health: HealthConfig = field(default_factory=HealthConfig)
 
     @classmethod
     def from_dict(cls, d: dict) -> CameraConfig:
@@ -133,6 +154,8 @@ class CameraConfig:
                 kwargs[k] = HysteresisConfig.from_dict(v)
             elif k == "temporal":
                 kwargs[k] = TemporalConfig.from_dict(v)
+            elif k == "health":
+                kwargs[k] = HealthConfig.from_dict(v)
             elif k in cls.__dataclass_fields__:
                 kwargs[k] = v
         return cls(**kwargs)
@@ -165,6 +188,7 @@ class ExperimentConfig:
     hsv_upper: list[int] = field(default_factory=lambda: [130, 255, 255])
     hsv_morph_open: int = 0
     hsv_morph_close: int = 0
+    runner_sample_fps: float = 1.0
     image_size: int = 512
     num_workers: int = 2
 
