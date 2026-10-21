@@ -4,7 +4,7 @@
 PYTHON := python
 PYTEST := python -m pytest
 
-.PHONY: setup test test-fast synth-demo calib-headless baseline temporal-demo run-demo run-demo-multi train-seg eval dashboard lint format clean
+.PHONY: setup test test-fast synth-demo calib-headless baseline temporal-demo run-demo run-demo-multi train-seg train-seg-smoke eval-seg eval dashboard lint format clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -41,7 +41,13 @@ run-demo-multi:
 	$(PYTHON) scripts/run_demo_multi.py --run-id demo-multi-001
 
 train-seg:
-	$(PYTHON) scripts/train_seg.py --config configs/default.yaml
+	$(PYTHON) scripts/train_seg.py --config configs/seg_pretrain.yaml
+
+train-seg-smoke:
+	$(PYTHON) scripts/train_seg.py --smoke --run-id seg-smoke-001 --overwrite
+
+eval-seg:
+	$(PYTHON) scripts/eval_seg.py --backend hsv --split val --with-depth
 
 eval:
 	$(PYTHON) scripts/eval.py --config configs/default.yaml

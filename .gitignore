@@ -18,10 +18,18 @@ build/
 # Data — only splits/ and data/README.md are tracked
 data/raw/
 data/processed/
+data/public/*
+!data/public/DATASETS.md
+data/self_labeled/
 data/synthetic/
 data/manifest.json
 data/manifest_*.json
 data/*.csv
+
+# Training artifacts (checkpoints live outside git)
+checkpoints/
+wandb/
+lightning_logs/
 
 # Results — track small summary files, not large binaries
 results/*/checkpoints/

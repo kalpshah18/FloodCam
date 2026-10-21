@@ -86,8 +86,6 @@ def estimate(
         DepthEstimate with depth_cm, confidence, and uncertainty.
         valid=False if the waterline cannot be reliably located.
     """
-    H_img, W_img = frame_rgb.shape[:2]
-
     mask = apply_hsv_mask(
         frame_rgb,
         tuple(exp_cfg.hsv_lower),  # type: ignore[arg-type]
@@ -96,6 +94,15 @@ def estimate(
         morph_open=exp_cfg.hsv_morph_open,
         morph_close=exp_cfg.hsv_morph_close,
     )
+    return estimate_from_mask(mask, camera_cfg)
+
+
+def estimate_from_mask(mask: np.ndarray, camera_cfg: CameraConfig) -> DepthEstimate:
+    """Estimate depth from a precomputed binary water mask (any segmentation backend).
+
+    The caller is responsible for applying the ROI to the mask.
+    """
+    H_img, W_img = mask.shape[:2]
 
     calib = _load_calib(camera_cfg.calibration)
     calib_mode = camera_cfg.calibration.mode

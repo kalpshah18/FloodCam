@@ -191,6 +191,7 @@ class ExperimentConfig:
     runner_sample_fps: float = 1.0
     image_size: int = 512
     num_workers: int = 2
+    seg_prob_threshold: float = 0.5  # water probability cut-off for neural backends
 
     @classmethod
     def from_dict(cls, d: dict) -> ExperimentConfig:

@@ -44,3 +44,4 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+markers = ["torch: needs torch + transformers (the [ml] extra); skipped when missing"]

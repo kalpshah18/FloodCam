@@ -1,0 +1,83 @@
+# Source-class -> binary water mapping for public segmentation datasets.
+#
+# Rules (enforced by floodcam.seg.classmap, never by memory):
+#   * Every mapped class name / id MUST exist in the dataset's OWN label file
+#     (label_file, parsed per label_format). A missing one aborts prepare + training.
+#   * Names below are candidates to be checked against the real label file at
+#     `prepare_public_data.py --verify`; the first verify run is the actual check.
+#   * `license_verified` must be flipped to true by a human after reading the licence
+#     at the source. It is false for every dataset until then.
+#
+# label_format: ade_objectinfo_csv | id_name_txt | coco_categories_json | binary
+#   ade_objectinfo_csv    CSV with a "Name" column (';'-separated synonyms); id = "Idx"
+#                         column if present, else row order + id_offset
+#   id_name_txt           one "<id>: <name>" / "<id> <name>" / "<id>,<name>" per line
+#   coco_categories_json  JSON {"categories": [{"id":..,"name":..}, ...]}
+#   binary                masks already binary; water = mask value in positive_values
+#                         (default: any value > 0). No label file.
+#
+# layout paths are relative to <data_root>/<root>/; "{split}" is replaced by split_dirs[...].
+version: 1
+
+datasets:
+  ade20k:
+    enabled: true
+    root: ade20k
+    label_file: objectInfo150.csv
+    label_format: ade_objectinfo_csv
+    id_offset: 1
+    water_class_names: [water, sea, river, lake]
+    layout: {images: "images/{split}", masks: "annotations/{split}", image_ext: [".jpg"], mask_ext: ".png"}
+    split_dirs: {train: training, val: validation}
+    license_note: "UNVERIFIED - read the licence at the dataset site before use"
+    license_verified: false
+
+  cocostuff:
+    enabled: true
+    root: cocostuff
+    label_file: labels.txt
+    label_format: id_name_txt
+    water_class_names: [river, sea, water-other]
+    layout: {images: "images/{split}", masks: "stuffthingmaps/{split}", image_ext: [".jpg"], mask_ext: ".png"}
+    split_dirs: {train: train2017, val: val2017}
+    license_note: "UNVERIFIED - read the licence at the dataset site before use"
+    license_verified: false
+
+  floodnet:
+    # Aerial (UAV) imagery. OFF for pretraining: camera height, viewing angle and object
+    # scale differ from a fixed ground-level camera, so water appearance statistics do
+    # not transfer to the target domain. Enable only for an explicit ablation.
+    enabled: false
+    domain_gap_note: "aerial UAV imagery vs ground-level fixed camera; off by default"
+    root: floodnet
+    label_file: classes.txt        # user copies the class table from the dataset README
+    label_format: id_name_txt
+    water_class_names: [Water]
+    layout: {images: "{split}/image", masks: "{split}/label", image_ext: [".jpg"], mask_ext: ".png"}
+    split_dirs: {train: train, val: val}
+    license_note: "UNVERIFIED - read the licence at the dataset site before use"
+    license_verified: false
+
+  # Generic Kaggle / Roboflow export (copy this block per export, change the key).
+  generic_flood:
+    enabled: false
+    root: generic_flood
+    label_file: null
+    label_format: binary
+    positive_values: []            # empty = any value > 0
+    layout: {images: "images/{split}", masks: "masks/{split}", image_ext: [".jpg", ".png"], mask_ext: ".png"}
+    split_dirs: {train: train, val: valid}
+    license_note: "UNVERIFIED - per-export licence; record the source URL"
+    license_verified: false
+
+# Hard negatives (puddles, wet roads, reflections, rain). Folders under
+# <data_root>/<root>/ : images/<sequence>/... and optional masks/<sequence>/... (same
+# relative path and stem). Missing mask = all background. Split is assigned by hashing the
+# top-level sequence folder name, so near-duplicate frames of one sequence never straddle
+# train/val.
+negatives:
+  enabled: true
+  root: negatives
+  sampling_weight: 2.0             # relative sampling weight of a negative image
+  val_fraction: 0.2
+  image_ext: [".jpg", ".png"]

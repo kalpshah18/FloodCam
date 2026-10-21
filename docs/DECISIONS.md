@@ -246,3 +246,71 @@ same pair of states (e.g., Normal→Pending→Normal cycles near the threshold).
 transition pattern fires once per occurrence in the natural flow.
 
 ---
+
+## 2026-10-21: M8 - SegFormer model, loss, and stack
+
+**Decision:** SegFormer-B0 default (B1 via config), 2 output classes (background, water),
+encoder initialised from ImageNet (`nvidia/mit-b0`) with a random decode head, or from an
+ADE-pretrained checkpoint if `init_weights` says so. The choice is recorded in `meta.json`.
+
+**Alternative:** U-Net with a pretrained encoder.
+
+**Reason:** CLAUDE.md names SegFormer first; it is small enough for a T4, and the HF
+implementation needs no extra dependency. Loss = class-weighted cross-entropy + soft Dice:
+water is a minority class in most scenes (and ~0 in negatives), so CE alone drifts toward
+"all background"; Dice optimises the overlap that IoU/F1 measure. Class weights
+(`N / (2 * count_c)`) are computed from the training split only (a guard raises if a non-train
+row is passed). ImageNet mean/std are constants of the pretrained encoder, not fitted to our
+data, so there is no dataset-normalisation statistic to leak. Validation IoU/F1 are
+accumulated over the whole split (not a mean of per-image scores) at the training resolution
+(`image_size`, default 512, square resize), so they are not full-resolution numbers.
+
+## 2026-10-21: M8 - Class mapping to binary water
+
+**Decision:** The source-class -> water mapping lives in `configs/seg_classmap.yaml`. Class
+names are NOT trusted from memory: the prepare script parses each dataset's own label file and
+aborts (`ClassMapError`) if a mapped name or id is absent. The names in the YAML are
+candidates until the first `--verify` against real files. Layout of each dataset under
+`data/public/` is the layout this project expects (user moves/symlinks the download), not a
+claim about the official archive structure.
+
+**Alternative:** hardcode ids (e.g. ADE "water" = N).
+
+**Reason:** a wrong id silently trains on the wrong class; a loud failure costs one minute.
+Mapping all water-like classes (sea, river, lake, ...) to one "water" class matches the task
+("is this pixel standing/flowing water"); rivers/canals are excluded from the *flood* decision
+later by ROI and static-region masks, not by the segmenter. Official train/val splits are used
+as-is for public sets; negatives (no official split) are split by hashing the sequence folder
+so near-duplicate frames never straddle train/val.
+
+## 2026-10-21: M8 - Domain gap: FloodNet off, negatives on, augmentation
+
+**Decision:** FloodNet is disabled by default (`enabled: false` + `domain_gap_note`).
+Hard negatives (puddles, wet roads, reflections, rain) are supported with empty or partial
+masks and a sampling weight (default 2.0). Augmentations: horizontal flip, scale/crop, colour
+jitter, blur, noise, JPEG, rain streaks; no vertical flip. Fine-tuning on self-labeled
+ground-level frames is the stage that closes the gap to our camera.
+
+**Alternative:** pretrain on everything including FloodNet.
+
+**Reason:** FloodNet is aerial UAV imagery; viewpoint, scale and water appearance differ from a
+fixed ground-level camera, so it can pull the encoder toward the wrong cues. It remains
+available behind a flag for an explicit ablation. Vertical flips would invert the gravity prior
+(water below the waterline) that the geometry relies on.
+
+## 2026-10-21: M8 - Training guards, ROI, and runner coupling
+
+**Decision:** (1) finetune refuses synthetic rows unless `--smoke-synthetic`, and refuses any
+scene named `locked_test_scene` in any `data/splits/*.json` (or `locked_scenes` in the config);
+pretrain refuses synthetic rows outside `--smoke`. (2) `SegFormerBackend` does NOT apply the ROI;
+the caller does, as specified. (3) `estimate_from_mask()` was split out of `estimate()` so any
+backend's mask can feed the same waterline/calibration code (HSV path unchanged).
+
+**Known limitation (not fixed this milestone):** `floodcam.run.process_timelapse` calls
+`estimate()` (HSV inside) for depth and uses the backend mask only for the snapshot overlay and
+`model_version`. So the runner does not yet produce SegFormer-based depth; `scripts/eval_seg.py
+--with-depth` does (via `estimate_from_mask`). Wiring the runner is a small follow-up that was
+outside this milestone's scope.
+
+**Licences:** `license_verified` is false for every dataset until a human flips it; the
+licence strings previously listed in `AI_USE.md` were written from memory and are unverified.

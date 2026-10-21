@@ -1,0 +1,25 @@
+# Stage 1: pretrain on public data (data/public, see scripts/prepare_public_data.py).
+stage: pretrain
+model: segformer_b0          # segformer_b0 | segformer_b1
+init_weights: default        # default = ImageNet encoder (nvidia/mit-b0 / mit-b1)
+                             # or an ADE-pretrained SegFormer hub id / local path
+image_size: 512
+epochs: 40
+batch_size: 16
+lr: 6.0e-5
+weight_decay: 1.0e-2
+seed: 42
+num_workers: 4
+amp: true
+patience: 6                  # early stopping on validation IoU
+ce_weight: 1.0
+dice_weight: 1.0
+negative_weight: null        # null = use negatives.sampling_weight from the class map
+class_weight_max_images: 2000
+class_map: configs/seg_classmap.yaml
+data_root: data/public
+manifest: data/public/seg_manifest.jsonl
+aug:
+  hflip_p: 0.5
+  crop_min_frac: 0.6
+  rain_p: 0.2

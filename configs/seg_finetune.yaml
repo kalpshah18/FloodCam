@@ -1,0 +1,24 @@
+# Stage 2: fine-tune on self-labeled ground-level frames (real manifest only).
+# Refuses synthetic rows (unless --smoke-synthetic) and refuses the locked final-test scene.
+stage: finetune
+model: segformer_b0
+init_weights: checkpoints/seg-pre-001/best   # stage-1 checkpoint dir (local path)
+image_size: 512
+epochs: 30
+batch_size: 8
+lr: 2.0e-5                   # lower than pretraining: small dataset, avoid forgetting
+weight_decay: 1.0e-2
+seed: 42
+num_workers: 4
+amp: true
+patience: 6
+ce_weight: 1.0
+dice_weight: 1.0
+negative_weight: 1.0
+class_weight_max_images: 2000
+manifest: data/self_labeled/manifest.jsonl   # produced at milestone 10 from labeled frames
+splits_file: data/splits/real_seg_finetune_splits.json  # coarse_train_scenes / coarse_val_scenes
+locked_scenes: []            # also read from "locked_test_scene" in any data/splits/*.json
+aug:
+  hflip_p: 0.5
+  crop_min_frac: 0.7

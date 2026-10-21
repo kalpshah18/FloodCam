@@ -19,3 +19,15 @@ def tmp_splits(tmp_path):
         return tmp_path
 
     return _write
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip tests marked @pytest.mark.torch when the [ml] extra is not installed."""
+    import importlib.util
+
+    if all(importlib.util.find_spec(m) is not None for m in ("torch", "transformers")):
+        return
+    skip = pytest.mark.skip(reason="torch/transformers not installed ([ml] extra)")
+    for item in items:
+        if "torch" in item.keywords:
+            item.add_marker(skip)
