@@ -1,0 +1,103 @@
+{
+  "seed": 42,
+  "created": "2026-10-21",
+  "type": "synthetic_loso",
+  "locked_test_scene": "synth_scene_01",
+  "coarse_train_scenes": [
+    "synth_scene_04",
+    "synth_scene_06",
+    "synth_scene_07",
+    "synth_scene_02",
+    "synth_scene_05",
+    "synth_scene_00"
+  ],
+  "coarse_val_scenes": [
+    "synth_scene_03"
+  ],
+  "loso_folds": [
+    {
+      "fold_idx": 0,
+      "val_scene": "synth_scene_03",
+      "train_scenes": [
+        "synth_scene_04",
+        "synth_scene_06",
+        "synth_scene_07",
+        "synth_scene_02",
+        "synth_scene_05",
+        "synth_scene_00"
+      ]
+    },
+    {
+      "fold_idx": 1,
+      "val_scene": "synth_scene_04",
+      "train_scenes": [
+        "synth_scene_03",
+        "synth_scene_06",
+        "synth_scene_07",
+        "synth_scene_02",
+        "synth_scene_05",
+        "synth_scene_00"
+      ]
+    },
+    {
+      "fold_idx": 2,
+      "val_scene": "synth_scene_06",
+      "train_scenes": [
+        "synth_scene_03",
+        "synth_scene_04",
+        "synth_scene_07",
+        "synth_scene_02",
+        "synth_scene_05",
+        "synth_scene_00"
+      ]
+    },
+    {
+      "fold_idx": 3,
+      "val_scene": "synth_scene_07",
+      "train_scenes": [
+        "synth_scene_03",
+        "synth_scene_04",
+        "synth_scene_06",
+        "synth_scene_02",
+        "synth_scene_05",
+        "synth_scene_00"
+      ]
+    },
+    {
+      "fold_idx": 4,
+      "val_scene": "synth_scene_02",
+      "train_scenes": [
+        "synth_scene_03",
+        "synth_scene_04",
+        "synth_scene_06",
+        "synth_scene_07",
+        "synth_scene_05",
+        "synth_scene_00"
+      ]
+    },
+    {
+      "fold_idx": 5,
+      "val_scene": "synth_scene_05",
+      "train_scenes": [
+        "synth_scene_03",
+        "synth_scene_04",
+        "synth_scene_06",
+        "synth_scene_07",
+        "synth_scene_02",
+        "synth_scene_00"
+      ]
+    },
+    {
+      "fold_idx": 6,
+      "val_scene": "synth_scene_00",
+      "train_scenes": [
+        "synth_scene_03",
+        "synth_scene_04",
+        "synth_scene_06",
+        "synth_scene_07",
+        "synth_scene_02",
+        "synth_scene_05"
+      ]
+    }
+  ]
+}

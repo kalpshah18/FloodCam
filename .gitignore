@@ -18,6 +18,7 @@ build/
 # Data — only splits/ and data/README.md are tracked
 data/raw/
 data/processed/
+data/synthetic/
 data/manifest.json
 data/manifest_*.json
 data/*.csv

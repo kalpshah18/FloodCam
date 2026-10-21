@@ -16,7 +16,10 @@ test-fast:
 	$(PYTEST) tests/ -v --tb=short -x
 
 synth-demo:
-	$(PYTHON) -m floodcam.synth.demo
+	$(PYTHON) -m floodcam.synth.demo --out-dir data/synthetic --seed 42
+	$(PYTHON) scripts/generate_synthetic_splits.py \
+		--manifest data/synthetic/manifest.jsonl \
+		--seed 42 --force
 
 train-seg:
 	$(PYTHON) scripts/train_seg.py --config configs/default.yaml

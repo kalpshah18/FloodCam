@@ -7,6 +7,7 @@ not be regenerated without --force.
 Usage:
     python scripts/generate_splits.py --manifest data/manifest.json --seed 42
 """
+
 import argparse
 import json
 import random
@@ -20,15 +21,17 @@ SPLITS_DIR = ROOT / "data" / "splits"
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--manifest", required=True, type=Path,
-                        help="Scene manifest JSON (list of {scene_id, ...})")
+    parser.add_argument(
+        "--manifest", required=True, type=Path, help="Scene manifest JSON (list of {scene_id, ...})"
+    )
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--val-frac", type=float, default=0.15,
-                        help="Fraction of scenes for validation")
-    parser.add_argument("--test-frac", type=float, default=0.15,
-                        help="Fraction of scenes for test (locked)")
-    parser.add_argument("--force", action="store_true",
-                        help="Overwrite existing split files")
+    parser.add_argument(
+        "--val-frac", type=float, default=0.15, help="Fraction of scenes for validation"
+    )
+    parser.add_argument(
+        "--test-frac", type=float, default=0.15, help="Fraction of scenes for test (locked)"
+    )
+    parser.add_argument("--force", action="store_true", help="Overwrite existing split files")
     args = parser.parse_args()
 
     existing = list(SPLITS_DIR.glob("*.json"))
@@ -66,8 +69,8 @@ def main() -> int:
         return 1
 
     train_ids = shuffled[:n_train]
-    val_ids = shuffled[n_train:n_train + n_val]
-    test_ids = shuffled[n_train + n_val:]
+    val_ids = shuffled[n_train : n_train + n_val]
+    test_ids = shuffled[n_train + n_val :]
 
     # Verify no leakage before writing
     all_sets = [set(train_ids), set(val_ids), set(test_ids)]
@@ -95,8 +98,10 @@ def main() -> int:
             json.dump(out, f, indent=2)
         print(f"  {split_name}: {len(ids)} scenes -> {p}")
 
-    print(f"\nSplit complete (seed={args.seed}): "
-          f"{len(train_ids)} train / {len(val_ids)} val / {len(test_ids)} test")
+    print(
+        f"\nSplit complete (seed={args.seed}): "
+        f"{len(train_ids)} train / {len(val_ids)} val / {len(test_ids)} test"
+    )
     return 0
 
 

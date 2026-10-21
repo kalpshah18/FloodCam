@@ -4,6 +4,7 @@ These tests enforce the core evaluation rule: no scene may appear in more
 than one split partition (train / val / test). Splits are keyed by scene ID,
 never by frame.
 """
+
 import json
 from itertools import combinations
 from pathlib import Path
@@ -17,12 +18,19 @@ SPLITS_DIR = Path(__file__).parent.parent / "data" / "splits"
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def load_splits(splits_dir: Path) -> dict[str, list[str]]:
-    """Return {split_name: [scene_ids]} for every *.json in splits_dir."""
+    """Return {split_name: [scene_ids]} for every standard split *.json in splits_dir.
+
+    Files that don't have a top-level 'scene_ids' key (e.g. synthetic_splits.json
+    which uses a different LOSO structure) are silently skipped.
+    """
     splits: dict[str, list[str]] = {}
     for p in sorted(splits_dir.glob("*.json")):
         with p.open() as f:
             data = json.load(f)
+        if "scene_ids" not in data:
+            continue
         name = data.get("split", p.stem)
         splits[name] = list(data["scene_ids"])
     return splits
@@ -32,14 +40,13 @@ def assert_no_leakage(splits: dict[str, list[str]]) -> None:
     """Raise AssertionError if any scene_id appears in more than one split."""
     for (name_a, ids_a), (name_b, ids_b) in combinations(splits.items(), 2):
         overlap = set(ids_a) & set(ids_b)
-        assert not overlap, (
-            f"Leakage: {sorted(overlap)} appear in both '{name_a}' and '{name_b}'"
-        )
+        assert not overlap, f"Leakage: {sorted(overlap)} appear in both '{name_a}' and '{name_b}'"
 
 
 # ---------------------------------------------------------------------------
 # Schema tests
 # ---------------------------------------------------------------------------
+
 
 class TestSplitSchema:
     def test_required_keys_present(self, tmp_splits):
@@ -76,40 +83,49 @@ class TestSplitSchema:
 # Leakage tests
 # ---------------------------------------------------------------------------
 
+
 class TestNoLeakage:
     def test_clean_splits_pass(self, tmp_splits):
-        d = tmp_splits({
-            "train": ["scene_001", "scene_002", "scene_003"],
-            "val": ["scene_004", "scene_005"],
-            "test": ["scene_006"],
-        })
+        d = tmp_splits(
+            {
+                "train": ["scene_001", "scene_002", "scene_003"],
+                "val": ["scene_004", "scene_005"],
+                "test": ["scene_006"],
+            }
+        )
         assert_no_leakage(load_splits(d))
 
     def test_train_val_overlap_detected(self, tmp_splits):
         # scene_003 in both train and val
-        d = tmp_splits({
-            "train": ["scene_001", "scene_002", "scene_003"],
-            "val": ["scene_003", "scene_004"],
-            "test": ["scene_005"],
-        })
+        d = tmp_splits(
+            {
+                "train": ["scene_001", "scene_002", "scene_003"],
+                "val": ["scene_003", "scene_004"],
+                "test": ["scene_005"],
+            }
+        )
         with pytest.raises(AssertionError, match="scene_003"):
             assert_no_leakage(load_splits(d))
 
     def test_train_test_overlap_detected(self, tmp_splits):
-        d = tmp_splits({
-            "train": ["scene_001", "scene_002"],
-            "val": ["scene_003"],
-            "test": ["scene_002"],
-        })
+        d = tmp_splits(
+            {
+                "train": ["scene_001", "scene_002"],
+                "val": ["scene_003"],
+                "test": ["scene_002"],
+            }
+        )
         with pytest.raises(AssertionError, match="scene_002"):
             assert_no_leakage(load_splits(d))
 
     def test_val_test_overlap_detected(self, tmp_splits):
-        d = tmp_splits({
-            "train": ["scene_001"],
-            "val": ["scene_002", "scene_003"],
-            "test": ["scene_003"],
-        })
+        d = tmp_splits(
+            {
+                "train": ["scene_001"],
+                "val": ["scene_002", "scene_003"],
+                "test": ["scene_003"],
+            }
+        )
         with pytest.raises(AssertionError, match="scene_003"):
             assert_no_leakage(load_splits(d))
 

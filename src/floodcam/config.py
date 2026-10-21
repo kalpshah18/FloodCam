@@ -1,4 +1,5 @@
 """Config dataclasses for cameras and experiments. Loaded from YAML files."""
+
 from __future__ import annotations
 
 import hashlib
@@ -49,6 +50,7 @@ class CalibrationConfig:
 @dataclass
 class ReferenceObject:
     """Known-size object (pole, curb) used as the geometric reference."""
+
     known_height_cm: float = 100.0
     pole_x_frac: float = 0.5  # fractional column position in frame [0, 1]
 
@@ -60,6 +62,7 @@ class ReferenceObject:
 @dataclass
 class ROI:
     """Rectangular region of interest in pixel coordinates."""
+
     x: int = 0
     y: int = 0
     w: int = 640

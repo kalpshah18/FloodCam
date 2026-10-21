@@ -1,9 +1,9 @@
 """Tests for the config loader (src/floodcam/config.py)."""
+
 from pathlib import Path
 
 import pytest
 import yaml
-
 from floodcam.config import (
     CameraConfig,
     ExperimentConfig,

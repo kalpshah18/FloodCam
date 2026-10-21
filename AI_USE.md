@@ -5,7 +5,7 @@ This project was developed with assistance from Claude Code (Claude Sonnet 4.6, 
 ## Kinds of assistance
 
 - **Scaffolding**: Repo structure, boilerplate Python packages, Makefile, config system.
-- **Code generation**: Config dataclasses, split generation script, test fixtures, seeding utility.
+- **Code generation**: Config dataclasses, split generation script, test fixtures, seeding utility, synthetic renderer, manifest schema, LOSO split generator.
 - **Documentation**: DECISIONS.md entries, protocol stubs.
 
 ## External code and model weights

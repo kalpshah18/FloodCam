@@ -53,3 +53,31 @@ Each entry: decision made, alternative considered, reason.
 **Reason:** Repeated evaluation on the test set leads to implicit over-fitting through hyperparameter choices. Locking one scene and running evaluation once preserves the integrity of the final reported number. Leave-one-scene-out CV is used for all tuning decisions.
 
 ---
+
+## 2026-10-21: Pinhole camera model for synthetic renderer
+
+**Decision:** Use a simple pinhole camera model (no lens distortion) for the synthetic renderer.
+
+**Alternative:** Full OpenCV distortion model.
+
+**Reason:** The research question concerns geometric depth accuracy, not lens distortion. The analytic formula `dv/dh = -f*D/Z_c(h)^2` (derived cleanly from the pinhole model) is the exact ground truth for calibration and depth unit tests. Adding lens distortion would complicate the analytic waterline check without improving experiment validity.
+
+---
+
+## 2026-10-21: Camera-frame convention Y_c = (H-h)*cos(alpha) - D*sin(alpha)
+
+**Decision:** Y_c is positive downward (standard camera convention); depression angle alpha tilts the optical axis below horizontal.
+
+**Reason:** This makes `dv/dh = -f*D/Z_c^2` always negative (waterline moves up in image as depth rises), matching physical intuition. The derivation simplifies to a closed-form independent of h because cross terms cancel exactly.
+
+---
+
+## 2026-10-21: Synthetic splits use a separate file (synthetic_splits.json)
+
+**Decision:** LOSO folds for synthetic data go in `data/splits/synthetic_splits.json`, never in `train.json`/`val.json`/`test.json`.
+
+**Alternative:** Reuse the standard split files with a type tag.
+
+**Reason:** Real-data splits must be immutable once generated. Mixing synthetic LOSO folds into the same file would force regeneration of real splits whenever synthetic parameters change. Separate files keep the two regimes independent and prevent accidental overwrite.
+
+---

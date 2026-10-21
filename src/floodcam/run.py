@@ -1,4 +1,5 @@
 """CLI entry point: python -m floodcam.run --source <video> --camera <id> --config <yaml>"""
+
 import argparse
 import sys
 
@@ -14,8 +15,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.parse_args(argv)
 
     raise NotImplementedError(
-        "Pipeline not yet implemented. "
-        "Run `make synth-demo` once milestone 4+ is complete."
+        "Pipeline not yet implemented. " "Run `make synth-demo` once milestone 4+ is complete."
     )
 
 
