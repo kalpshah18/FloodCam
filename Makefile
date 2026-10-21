@@ -4,7 +4,7 @@
 PYTHON := python
 PYTEST := python -m pytest
 
-.PHONY: setup test test-fast synth-demo calib-headless train-seg eval dashboard lint format clean
+.PHONY: setup test test-fast synth-demo calib-headless baseline temporal-demo train-seg eval dashboard lint format clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -30,6 +30,9 @@ calib-headless:
 
 baseline:
 	$(PYTHON) scripts/run_hsv_baseline.py --run-id hsv-001
+
+temporal-demo:
+	$(PYTHON) scripts/simulate_state_machine.py --run-id temporal-001
 
 train-seg:
 	$(PYTHON) scripts/train_seg.py --config configs/default.yaml

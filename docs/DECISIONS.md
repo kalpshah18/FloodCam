@@ -135,6 +135,22 @@ resolution of 0.5 cm/px).
 
 ---
 
+## 2026-10-21: Flood state machine transition table
+
+**Decision:** Four states (Normal, Pending, Flood, Recovering) with timestamp-based hysteresis and persistence.
+
+Key choices:
+- Flood can only reach Normal through Recovering (prevents spurious cleared alarms).
+- Falling trend while Pending resets to Normal, not Recovering — since Flood was never declared.
+- Rate=None (insufficient data) does not trigger Flood→Recovering; we wait for data.
+- Draining logic (Recovering state) is a dashboard demonstration only, not a validated claim, because test clips are too short to validate minutes-long trends (see CLAUDE.md).
+
+**Alternative:** Single-threshold hysteresis without a Recovering state.
+
+**Reason:** Recovering lets the dashboard distinguish "water is draining" from "alarm cleared". The Flood→Normal-only-through-Recovering rule is critical for alert integrity — without it, a momentary low reading (reflection, shadow) could clear an active flood alarm.
+
+---
+
 ## 2026-10-21: Half-plane water mask in synthetic renderer is a known limitation
 
 **Decision:** Document and accept that the synthetic renderer's water mask is a full-width horizontal half-plane.

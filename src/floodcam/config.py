@@ -77,6 +77,35 @@ class ROI:
 
 
 @dataclass
+class TemporalConfig:
+    """Temporal filter and state machine parameters for one camera."""
+
+    filter_window_samples: int = 7
+    min_confidence: float = 0.5
+    persistence_minutes: float = 5.0
+    trend_window_minutes: float = 10.0
+    falling_slope_cm_per_10min: float = -1.0
+    rise_escalation_cm_per_10min: float = 5.0
+    trigger_cm: float = 3.5
+    clear_cm: float = 2.5
+    max_gap_seconds: float = 30.0
+
+    def __post_init__(self) -> None:
+        if not (5 <= self.filter_window_samples <= 10):
+            raise ValueError(
+                f"filter_window_samples must be in [5, 10], got {self.filter_window_samples}"
+            )
+        if self.trigger_cm <= self.clear_cm:
+            raise ValueError(
+                f"trigger_cm ({self.trigger_cm}) must be > clear_cm ({self.clear_cm})"
+            )
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "TemporalConfig":
+        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
+
+
+@dataclass
 class CameraConfig:
     camera_id: str = "cam_default"
     description: str = ""
@@ -86,6 +115,7 @@ class CameraConfig:
     calibration: CalibrationConfig = field(default_factory=CalibrationConfig)
     severity: SeverityThresholds = field(default_factory=SeverityThresholds)
     hysteresis: HysteresisConfig = field(default_factory=HysteresisConfig)
+    temporal: TemporalConfig = field(default_factory=TemporalConfig)
 
     @classmethod
     def from_dict(cls, d: dict) -> CameraConfig:
@@ -101,6 +131,8 @@ class CameraConfig:
                 kwargs[k] = SeverityThresholds.from_dict(v)
             elif k == "hysteresis":
                 kwargs[k] = HysteresisConfig.from_dict(v)
+            elif k == "temporal":
+                kwargs[k] = TemporalConfig.from_dict(v)
             elif k in cls.__dataclass_fields__:
                 kwargs[k] = v
         return cls(**kwargs)

@@ -1,0 +1,93 @@
+{
+  "run_id": "temporal-001",
+  "date": "2026-10-21",
+  "synthetic": true,
+  "note": "SYNTHETIC RESULTS \u2014 temporal pipeline validation only. Must not appear in a paper.",
+  "config": {
+    "filter_window_samples": 7,
+    "persistence_minutes": 5.0,
+    "trend_window_minutes": 10.0,
+    "trigger_cm": 3.5,
+    "clear_cm": 2.5,
+    "falling_slope_cm_per_10min": -1.0,
+    "max_gap_seconds": 30.0
+  },
+  "scenarios": [
+    {
+      "scenario": "steady_rise",
+      "n_samples": 901,
+      "final_state": "Flood",
+      "flood_entry_s": 461.0,
+      "n_transitions": 2,
+      "key_transitions": [
+        "Normal\u2192Pending",
+        "Pending\u2192Flood"
+      ]
+    },
+    {
+      "scenario": "rise_plateau_fall",
+      "n_samples": 901,
+      "final_state": "Normal",
+      "flood_entry_s": 373.0,
+      "n_transitions": 4,
+      "key_transitions": [
+        "Normal\u2192Pending",
+        "Pending\u2192Flood",
+        "Flood\u2192Recovering",
+        "Recovering\u2192Normal"
+      ]
+    },
+    {
+      "scenario": "oscillation_around_threshold",
+      "n_samples": 601,
+      "final_state": "Normal",
+      "flood_entry_s": null,
+      "n_transitions": 20,
+      "key_transitions": [
+        "Normal\u2192Pending",
+        "Pending\u2192Normal",
+        "Normal\u2192Pending",
+        "Pending\u2192Normal",
+        "Normal\u2192Pending",
+        "Pending\u2192Normal"
+      ]
+    },
+    {
+      "scenario": "single_spike",
+      "n_samples": 121,
+      "final_state": "Normal",
+      "flood_entry_s": null,
+      "n_transitions": 0,
+      "key_transitions": []
+    },
+    {
+      "scenario": "dropout_gap",
+      "n_samples": 241,
+      "final_state": "Pending",
+      "flood_entry_s": null,
+      "n_transitions": 1,
+      "key_transitions": [
+        "Normal\u2192Pending"
+      ]
+    },
+    {
+      "scenario": "short_puddle",
+      "n_samples": 301,
+      "final_state": "Normal",
+      "flood_entry_s": null,
+      "n_transitions": 0,
+      "key_transitions": []
+    },
+    {
+      "scenario": "slow_fall_from_deep",
+      "n_samples": 1201,
+      "final_state": "Normal",
+      "flood_entry_s": null,
+      "n_transitions": 2,
+      "key_transitions": [
+        "Normal\u2192Pending",
+        "Pending\u2192Normal"
+      ]
+    }
+  ]
+}
