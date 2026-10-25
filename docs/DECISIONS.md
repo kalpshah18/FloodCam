@@ -314,3 +314,34 @@ outside this milestone's scope.
 
 **Licences:** `license_verified` is false for every dataset until a human flips it; the
 licence strings previously listed in `AI_USE.md` were written from memory and are unverified.
+
+## 2026-10-25: Upload-video live dashboard (`app/upload_view.py`, `floodcam.live`)
+
+**Decision:** The dashboard's default mode takes an uploaded video, lets the user calibrate on a
+frame, and updates depth/severity/state per sampled frame while the video is analysed. Replay of
+recorded runs remains as a second mode. Calibration for an arbitrary video is a 2-point
+`LinearCalib` (ground-contact row = 0 cm, one marked row at a known height), entered with
+sliders; the preview shows a test reading so the user can check it on a frame with known depth.
+**Alternative:** click-to-mark with a custom component (extra dependency, "ask before adding"),
+or homography (needs 4+ points; still available through `floodcam.calib.annotate`).
+
+**Decision:** Timestamps are video time (`frame_index / fps`), not wall-clock. Playback speed only
+paces the display. Persistence / trend windows default to seconds (10 s / 20 s) in this mode so
+a short clip can reach Flood and Recovering; the sidebar says to use minutes for real events.
+Rate-of-rise severity escalation is off by default here: over a 20 s window depth noise
+converts to a large cm/10 min rate. The Flood/Recovering logic remains a demonstration, not a
+validated claim (CLAUDE.md).
+
+**Decision:** A healthy frame with no water at the pole is a valid 0 cm reading
+(`reason="no_water"` -> depth 0, confidence 0.8), not an excluded sample. Without this the
+temporal filter held the last median after water receded (observed: 2.3 cm shown on a dry scene).
+`DepthEstimate` gained a defaulted `reason` field to carry the waterline reason.
+
+**Decision:** In this pipeline only black/obstructed frames gate the depth estimate. The frozen
+check (mean abs diff < threshold for k frames) is reported but does not gate: a static
+fixed-camera scene legitimately yields near-identical frames, and the default threshold (5.0)
+would flag real static footage. Uploads use threshold 0.5.
+
+**Limitation:** The waterline detector reads water on the columns flanking the pole and requires
+water at the ground-contact row; it is the project's HSV baseline geometry and has only been
+validated on synthetic video. No real-footage accuracy claim exists.

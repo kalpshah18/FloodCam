@@ -4,7 +4,7 @@
 PYTHON := python
 PYTEST := python -m pytest
 
-.PHONY: setup test test-fast synth-demo calib-headless baseline temporal-demo run-demo run-demo-multi train-seg train-seg-smoke eval-seg eval dashboard lint format clean
+.PHONY: upload-demo setup test test-fast synth-demo calib-headless baseline temporal-demo run-demo run-demo-multi train-seg train-seg-smoke eval-seg eval dashboard lint format clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -65,3 +65,6 @@ format:
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -name "*.pyc" -delete 2>/dev/null || true
+
+upload-demo:
+	streamlit run app/dashboard.py

@@ -35,6 +35,7 @@ class DepthEstimate:
     calibration_mode: str
     cm_per_pixel_at_waterline: float
     uncertainty_cm: float
+    reason: str = "ok"  # waterline reason: ok|no_water|above_pole_top|fully_submerged|broken_mask
 
 
 def _load_calib(cfg: CalibrationConfig) -> _CalibUnion:
@@ -129,6 +130,7 @@ def estimate_from_mask(mask: np.ndarray, camera_cfg: CameraConfig) -> DepthEstim
             calibration_mode=calib_mode,
             cm_per_pixel_at_waterline=s_at_ground,
             uncertainty_cm=0.0,
+            reason=wl.reason,
         )
 
     depth_cm = max(0.0, _height_at(calib, wl.waterline_row, pole_x))

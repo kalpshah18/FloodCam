@@ -114,3 +114,19 @@ A screenshot could not be saved automatically.  To capture one:
 1. Run `make dashboard`.
 2. Open `http://localhost:8501` in a browser.
 3. Use the browser's screenshot function and save to `docs/img/dashboard.png`.
+
+## Upload mode (default)
+
+`streamlit run app/dashboard.py`, then in the sidebar choose **Upload video (live)**:
+
+1. Upload a video (mp4/mov/avi/mkv/webm) or press *Load synthetic demo video*.
+2. Calibrate on a frame: pole column, ground-contact row (0 cm), a second mark row and its real
+   height in cm. Tune the HSV water range until the mask covers the water; the test reading on
+   the preview frame shows what the pipeline would report.
+3. *Start analysis*: depth, severity, state, rate, confidence, annotated frame and depth chart
+   update per sampled frame. Playback speed (1x / 5x / 20x / max) only paces the display.
+4. Download the per-frame CSV; with "Save run" on, the run is also written to
+   `results/uploads.db` and can be replayed under *Recorded runs (replay)*.
+
+Set `FLOODCAM_SEG_CKPT` to a trained SegFormer checkpoint (needs torch) to enable the neural mask.
+Headless equivalent: `floodcam.live.analyze_video(path, settings)`.
