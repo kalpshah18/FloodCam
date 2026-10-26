@@ -32,7 +32,8 @@ from floodcam.config import (
 )
 from floodcam.depth.estimate import DepthEstimate, estimate_from_mask
 from floodcam.health import HealthChecker
-from floodcam.io.video import DEFAULT_MAX_WIDTH, iter_sampled_frames, probe_video
+from floodcam.io.stabilise import Stabiliser
+from floodcam.io.video import DEFAULT_MAX_WIDTH, iter_sampled_frames, probe_video, read_reference
 from floodcam.temporal.filter import TemporalFilter
 from floodcam.temporal.state_machine import StateMachine
 
@@ -61,7 +62,13 @@ class LiveSettings:
     mark_height_cm: float      # real height of that mark above ground
     pole_width_px: int = 6
     roi: Optional[tuple[int, int, int, int]] = None  # x, y, w, h; None = full frame
-    # Segmentation
+    # Segmentation / depth reading
+    mask_source: str = "change"   # "change" (vs dry reference) | "colour" (HSV) | "model" (SegFormer)
+    estimator: str = "gauge"      # "gauge" (on the pole strip) | "flank" (water beside the pole)
+    diff_threshold: float = 20.0  # Lab dE for the change mask
+    diff_blur: int = 7
+    ref_time_s: float = 0.0       # where the dry reference starts
+    stabilise: bool = True
     hsv_lower: list[int] = field(default_factory=lambda: [85, 40, 40])
     hsv_upper: list[int] = field(default_factory=lambda: [130, 255, 255])
     morph_open: int = 3
@@ -115,7 +122,11 @@ def build_camera_config(
     cfg.reference_object.pole_width_px = settings.pole_width_px
     # Pole top is never visible in an arbitrary video; use the marked height + margin so
     # "fully submerged" fires only when water reaches above the highest calibrated mark.
-    cfg.reference_object.known_height_cm = settings.mark_height_cm
+    # Gauge mode extrapolates above the second mark (the pole top is unknown), so push the
+    # "pole top" row far up; flank mode keeps the mark as the top.
+    cfg.reference_object.known_height_cm = settings.mark_height_cm * (
+        4.0 if settings.estimator == "gauge" else 1.0
+    )
     x, y, w, h = settings.roi if settings.roi else (0, 0, W, H)
     cfg.roi = ROI(x=int(x), y=int(y), w=int(w), h=int(h))
     cfg.temporal = TemporalConfig(
@@ -141,6 +152,30 @@ def build_experiment_config(settings: LiveSettings) -> ExperimentConfig:
         hsv_morph_close=settings.morph_close,
         runner_sample_fps=settings.sample_fps,
     )
+
+
+def build_backend(
+    settings: LiveSettings,
+    cfg: CameraConfig,
+    reference_rgb: Optional[np.ndarray],
+    model_backend: Optional["SegmentationBackend"] = None,
+) -> "SegmentationBackend":
+    """Segmentation backend for the chosen mask source."""
+    from floodcam.seg.backend import HsvBackend
+    from floodcam.seg.change import ChangeBackend
+
+    if model_backend is not None:
+        return model_backend
+    exp = build_experiment_config(settings)
+    if settings.mask_source == "change":
+        if reference_rgb is None:
+            raise ValueError("The change mask needs a dry reference frame.")
+        return ChangeBackend(
+            reference_rgb, threshold=settings.diff_threshold, blur=settings.diff_blur,
+            morph_open=settings.morph_open, morph_close=settings.morph_close,
+            gain_rows=(0, max(8, int(settings.mark_row))),
+        )
+    return HsvBackend(exp, cfg)
 
 
 @dataclass
@@ -174,36 +209,50 @@ def annotate_frame(
     depth_cm: Optional[float],
     state: str,
     show_mask: bool = True,
+    severity: str = "",
 ) -> np.ndarray:
-    """Overlay mask, ROI, pole, ground line, waterline and a readout. Returns RGB."""
+    """Overlay mask, gauge strip, ground line, waterline, depth bar and a readout. RGB out."""
     import cv2
 
     out = frame_rgb.copy()
     H, W = out.shape[:2]
     if show_mask and mask is not None and mask.any():
-        tint = np.array([0, 120, 255], dtype=np.float32)
+        tint = np.array([0, 140, 255], dtype=np.float32)
         sel = mask > 0
-        out[sel] = (out[sel].astype(np.float32) * 0.55 + tint * 0.45).astype(np.uint8)
+        out[sel] = (out[sel].astype(np.float32) * 0.6 + tint * 0.4).astype(np.uint8)
 
     r = cfg.roi
-    cv2.rectangle(out, (r.x, r.y), (r.x + r.w - 1, r.y + r.h - 1), (255, 255, 0), 1)
+    if (r.w, r.h) != (W, H):
+        cv2.rectangle(out, (r.x, r.y), (r.x + r.w - 1, r.y + r.h - 1), (255, 255, 0), 1)
     pole_x = int(W * cfg.reference_object.pole_x_frac)
-    hw = cfg.reference_object.pole_width_px // 2
-    cv2.rectangle(out, (pole_x - hw, 0), (pole_x + hw, H - 1), (255, 255, 255), 1)
-
+    hw = max(1, cfg.reference_object.pole_width_px // 2)
     pts = cfg.calibration.reference_points
-    if pts:
-        v_g = int(round(pts[0][0]))
-        cv2.line(out, (0, v_g), (W - 1, v_g), (0, 255, 0), 1)
-        cv2.putText(out, "ground 0 cm", (4, max(12, v_g - 4)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 1, cv2.LINE_AA)
+    v_g = int(round(pts[0][0])) if pts else None
+    v_m = int(round(pts[1][0])) if len(pts) > 1 else None
+    if v_g is not None and v_m is not None:
+        cv2.rectangle(out, (pole_x - hw, v_m), (pole_x + hw, v_g), (255, 255, 255), 1)
+        cv2.line(out, (max(0, pole_x - 60), v_g), (min(W - 1, pole_x + 60), v_g), (0, 255, 0), 2)
+        cv2.line(out, (max(0, pole_x - 60), v_m), (min(W - 1, pole_x + 60), v_m), (255, 0, 255), 1)
     if waterline_row is not None and 0 <= waterline_row < H:
         v = int(round(waterline_row))
-        cv2.line(out, (0, v), (W - 1, v), (255, 0, 0), 2)
+        cv2.line(out, (0, v), (W - 1, v), (255, 60, 60), 2)
 
-    label = "no reading" if depth_cm is None else f"{depth_cm:.1f} cm  {state}"
-    cv2.rectangle(out, (0, 0), (min(W, 260), 26), (0, 0, 0), -1)
-    cv2.putText(out, label, (6, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1, cv2.LINE_AA)
+    # Banner
+    label = "no reading" if depth_cm is None else f"{depth_cm:.1f} cm"
+    sub = "  ".join(dict.fromkeys(x for x in (severity, state) if x))  # drop duplicate words
+    cv2.rectangle(out, (0, 0), (min(W, 330), 44), (0, 0, 0), -1)
+    cv2.putText(out, label, (8, 33), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+    if sub:
+        cv2.putText(out, sub, (150, 29), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1, cv2.LINE_AA)
+
+    # Depth bar (ground -> second mark) at the right edge
+    if v_g is not None and v_m is not None and depth_cm is not None and pts:
+        mark_cm = pts[1][1]
+        x0 = W - 26
+        cv2.rectangle(out, (x0, v_m), (x0 + 14, v_g), (255, 255, 255), 1)
+        frac = float(np.clip(depth_cm / max(mark_cm, 1e-6), 0, 1))
+        top = int(round(v_g - frac * (v_g - v_m)))
+        cv2.rectangle(out, (x0 + 1, top), (x0 + 13, v_g - 1), (40, 140, 255), -1)
     return out
 
 
@@ -215,12 +264,21 @@ class LivePipeline:
         cfg: CameraConfig,
         exp_cfg: ExperimentConfig,
         backend: Optional["SegmentationBackend"] = None,
+        estimator: str = "flank",
+        reference_rgb: Optional[np.ndarray] = None,
+        stabilise: bool = False,
+        stab_rows: Optional[tuple[int, int]] = None,
     ) -> None:
         from floodcam.seg.backend import HsvBackend
 
         self.cfg = cfg
         self.exp_cfg = exp_cfg
+        self.estimator = estimator
         self.backend = backend or HsvBackend(exp_cfg, cfg)
+        self.stabiliser = (
+            Stabiliser(reference_rgb, rows=stab_rows)
+            if (stabilise and reference_rgb is not None) else None
+        )
         self.health = HealthChecker(cfg.health)
         self.filter = TemporalFilter(cfg.temporal)
         self.machine = StateMachine(cfg.temporal)
@@ -237,6 +295,8 @@ class LivePipeline:
         return out
 
     def step(self, timestamp_s: float, frame_rgb: np.ndarray) -> LiveFrame:
+        if self.stabiliser is not None:
+            frame_rgb = self.stabiliser.align(frame_rgb)
         hres = self.health.check(frame_rgb)
         # Frozen detection is informational only: a static fixed-camera scene legitimately
         # produces near-identical consecutive frames (see docs/DECISIONS.md).
@@ -245,7 +305,7 @@ class LivePipeline:
         mask: Optional[np.ndarray] = None
         if gate_ok:
             mask = self._roi_masked(self.backend.predict_mask(frame_rgb))
-            est = estimate_from_mask(mask, self.cfg)
+            est = estimate_from_mask(mask, self.cfg, self.estimator)
             if not est.valid and est.reason == "no_water":
                 # Healthy frame, no water at the pole: a genuine 0 cm reading, not a gap.
                 est = DepthEstimate(
@@ -270,6 +330,7 @@ class LivePipeline:
             est.waterline_row if est.valid and est.reason == "ok" else None,
             depth if so.filtered_depth_cm is not None else None,
             so.state.value,
+            severity=so.severity_class.name,
         )
         frame = LiveFrame(
             index=self._n,
@@ -326,7 +387,18 @@ def analyze_video(
         if pipeline is None:
             first_frame_shape = frame.shape
             cfg = build_camera_config(settings, first_frame_shape, camera_id)
-            pipeline = LivePipeline(cfg, build_experiment_config(settings), backend)
+            reference = None
+            if settings.mask_source == "change" or settings.stabilise:
+                reference = read_reference(video_path, settings.ref_time_s, 5, settings.max_width)
+                if reference.shape != frame.shape:
+                    reference = cv2.resize(reference, (frame.shape[1], frame.shape[0]))
+            pipeline = LivePipeline(
+                cfg, build_experiment_config(settings),
+                build_backend(settings, cfg, reference, backend),
+                estimator=settings.estimator, reference_rgb=reference,
+                stabilise=settings.stabilise,
+                stab_rows=(0, int(settings.mark_row)),
+            )
             if store is not None:
                 store.upsert_run(
                     run_id=run_id, source=str(video_path), camera_id=camera_id,

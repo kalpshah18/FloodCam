@@ -117,16 +117,16 @@ A screenshot could not be saved automatically.  To capture one:
 
 ## Upload mode (default)
 
-`streamlit run app/dashboard.py`, then in the sidebar choose **Upload video (live)**:
+`streamlit run app/dashboard.py` -> **Upload video (live)**.
 
-1. Upload a video (mp4/mov/avi/mkv/webm) or press *Load synthetic demo video*.
-2. Calibrate on a frame: pole column, ground-contact row (0 cm), a second mark row and its real
-   height in cm. Tune the HSV water range until the mask covers the water; the test reading on
-   the preview frame shows what the pipeline would report.
-3. *Start analysis*: depth, severity, state, rate, confidence, annotated frame and depth chart
-   update per sampled frame. Playback speed (1x / 5x / 20x / max) only paces the display.
-4. Download the per-frame CSV; with "Save run" on, the run is also written to
-   `results/uploads.db` and can be replayed under *Recorded runs (replay)*.
+1. Upload a video (mp4/mov/avi/mkv/webm, up to 2 GB) or load the synthetic demo.
+2. Click the base of the reference pole (0 cm), then a point at a known height; enter that height.
+3. Choose detection. *Change vs dry reference* (default) compares each frame with a dry moment of
+   the same video (pick it with the slider); tune sensitivity until the preview reads the right
+   depth. *Water colour (HSV)* is the fallback for clip-style footage.
+4. Start analysis: live depth, severity, state, rate, confidence, annotated frame, chart, alerts.
+   Afterwards: summary, annotated video (playable and downloadable), per-frame CSV.
 
-Set `FLOODCAM_SEG_CKPT` to a trained SegFormer checkpoint (needs torch) to enable the neural mask.
-Headless equivalent: `floodcam.live.analyze_video(path, settings)`.
+Recording tips: tripod, pole or ruler with visible base, a few dry seconds first, no people
+crossing the pole. Shake is compensated if there is texture (buildings, trees) above the pole.
+Set `FLOODCAM_SEG_CKPT` to use a trained SegFormer checkpoint (needs torch).

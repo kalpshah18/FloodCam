@@ -98,3 +98,49 @@ def test_upload_view_apptest_demo():
     assert not at.exception
     text = " ".join(str(m.value) for m in at.main.metric)
     assert "Peak depth" in " ".join(m.label for m in at.main.metric) and text
+
+
+@pytest.mark.parametrize("degrade", [False, True])
+def test_gauge_change_path_with_shake_and_exposure_drift(tmp_path, degrade):
+    path, settings, fn = render_demo_video(tmp_path / "g.mp4", degrade=degrade, method="gauge")
+    out = list(analyze_video(path, settings))
+    errs = [abs(f.raw_depth_cm - fn(f.timestamp_s)) for f in out if f.raw_depth_cm is not None]
+    assert np.mean(errs) < 1.0 and max(errs) < 3.0
+    seq = [f.transition for f in out if f.transition]
+    assert seq == ["Normal→Pending", "Pending→Flood", "Flood→Recovering", "Recovering→Normal"]
+    assert out[-1].depth_cm < 2.5
+
+
+def test_dry_video_stays_normal(tmp_path):
+    path, settings, _ = render_demo_video(tmp_path / "dry.mp4", duration_s=30.0, peak_cm=0.0,
+                                          degrade=True, method="gauge")
+    out = list(analyze_video(path, settings))
+    assert all(f.state == "Normal" for f in out)
+    assert max(f.depth_cm for f in out) < 1.0
+
+
+def test_gauge_waterline_unit():
+    from floodcam.depth.waterline import detect_waterline_gauge
+
+    m = np.zeros((200, 100), np.uint8)
+    m[120:151, 46:55] = 255  # changed run from row 120 down to ground row 150
+    r = detect_waterline_gauge(m, v_g=150.0, v_top=10.0, pole_x=50, half_width=4, cm_per_pixel=0.5)
+    assert r.valid and r.waterline_row == pytest.approx(119.5)
+    dry = detect_waterline_gauge(np.zeros_like(m), 150.0, 10.0, 50, 4, 0.5)
+    assert not dry.valid and dry.reason == "no_water"
+    m2 = m.copy()
+    m2[130:132, 46:55] = 0  # 2-row glare gap is bridged
+    r2 = detect_waterline_gauge(m2, 150.0, 10.0, 50, 4, 0.5)
+    assert r2.valid and r2.waterline_row == pytest.approx(119.5)
+
+
+def test_annotated_video_export(demo, tmp_path):
+    from floodcam.io.export import AnnotatedVideoWriter
+
+    path, settings, _ = demo
+    w = AnnotatedVideoWriter(tmp_path / "a.mp4", fps=5.0)
+    for f in analyze_video(path, settings, max_frames=5):
+        w.write(f.annotated_rgb)
+    out = w.close()
+    assert out is not None and out.stat().st_size > 1000
+    assert probe_video(out).width == 640

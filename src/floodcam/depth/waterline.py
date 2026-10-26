@@ -151,3 +151,58 @@ def detect_waterline(
         continuity_frac=continuity_frac,
         reason="ok",
     )
+
+
+def detect_waterline_gauge(
+    mask: np.ndarray,
+    v_g: float,
+    v_top: float,
+    pole_x: int,
+    half_width: int,
+    cm_per_pixel: float,
+    min_frac: float = 0.5,
+    gap_cm: float = 1.0,
+    base_rows: int = 3,
+) -> WaterlineResult:
+    """Waterline read on the reference object itself (the "gauge strip").
+
+    The strip is the columns pole_x +/- half_width. Scanning upward from the
+    ground-contact row, the waterline is the highest row of the contiguous run of
+    rows whose changed-pixel fraction >= min_frac. Gaps up to gap_cm are bridged
+    (glare, ruler ticks). If the base of the strip is unchanged the gauge is dry.
+    """
+    H, W = mask.shape[:2]
+    c0, c1 = max(0, pole_x - half_width), min(W, pole_x + half_width + 1)
+    if c1 <= c0:
+        return WaterlineResult(float(v_g), False, 0.0, 0.0, 0.0, "no_water")
+    frac = (mask[:, c0:c1] > 0).mean(axis=1)
+    r_g = int(min(H - 1, max(0, round(v_g))))
+
+    base = frac[max(0, r_g - base_rows + 1) : r_g + 1]
+    if base.size == 0 or base.mean() < min_frac:
+        return WaterlineResult(float(v_g), False, 0.0, float(base.mean()) if base.size else 0.0,
+                               0.0, "no_water")
+
+    gap_allow = max(2, int(round(gap_cm / max(cm_per_pixel, 1e-6))))
+    last, gap, r = r_g, 0, r_g
+    while r > 0:
+        r -= 1
+        if frac[r] >= min_frac:
+            last, gap = r, 0
+        else:
+            gap += 1
+            if gap > gap_allow:
+                break
+
+    v_w = float(last) - 0.5
+    span = frac[last : r_g + 1]
+    coverage = float((span >= min_frac).mean())
+    continuity = float(span.mean())
+    if v_w <= v_top:
+        return WaterlineResult(v_w, False, 0.0, coverage, continuity, "fully_submerged")
+    resolution_factor = min(1.0, 0.5 / max(cm_per_pixel, 1e-6))
+    # A very short run right at the ground row is easily noise; discount it.
+    height_px = r_g - last
+    run_factor = min(1.0, (height_px + 1) / 4.0)
+    confidence = coverage * continuity * resolution_factor * run_factor
+    return WaterlineResult(v_w, True, float(confidence), coverage, continuity, "ok")

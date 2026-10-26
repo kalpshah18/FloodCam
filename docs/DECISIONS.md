@@ -345,3 +345,26 @@ would flag real static footage. Uploads use threshold 0.5.
 **Limitation:** The waterline detector reads water on the columns flanking the pole and requires
 water at the ground-contact row; it is the project's HSV baseline geometry and has only been
 validated on synthetic video. No real-footage accuracy claim exists.
+
+## 2026-10-26: Real-footage robustness for upload mode
+
+**Decision:** Default depth reading is the "gauge" method: a narrow strip on the reference
+object itself, thresholded for change against a dry reference frame (mean of 5 frames; Lab dE
+after per-frame exposure compensation from rows above the highest mark). The waterline is the
+top of the contiguous changed run above the ground row (gaps up to 1 cm bridged).
+**Alternative:** global HSV colour threshold + reading water beside the pole. Kept as an option
+(and for the synthetic legacy tests) but a colour threshold cannot separate water from sky,
+asphalt or foliage. Reading beside the pole also does not measure depth on a real ground plane.
+**Limits:** needs a dry moment in the video; wet-looking but unchanged water (clear, still,
+no reflection) can be missed; shadows, passers-by and reflections cause false change. None of
+this is validated on real footage yet.
+
+**Decision:** Small camera shake is removed by phase correlation on edge magnitude, using only rows
+above the highest calibration mark (never underwater), accepted only if it improves a z-scored
+alignment error by >= 15%. Using the whole frame was tried first and failed: rising water was read as
+camera motion (up to 9 px drift).
+
+**Decision:** Click-to-mark uses `streamlit-image-coordinates` (small pure-Python component).
+Sliders remain as fine-tune and as the fallback if the package is missing.
+
+**Decision:** Annotated video is encoded with ffmpeg (H.264) when available, else mp4v.

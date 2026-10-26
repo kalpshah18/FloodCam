@@ -129,3 +129,29 @@ def iter_sampled_frames(
             idx += 1
     finally:
         cap.release()
+
+
+def read_reference(
+    path: str | Path, t_s: float = 0.0, n: int = 5, max_width: int = DEFAULT_MAX_WIDTH
+) -> np.ndarray:
+    """Average n consecutive frames starting near t_s (noise-reduced dry reference). RGB uint8."""
+    import cv2
+
+    cap = _open(path)
+    acc: np.ndarray | None = None
+    got = 0
+    try:
+        if t_s > 0:
+            cap.set(cv2.CAP_PROP_POS_MSEC, t_s * 1000.0)
+        for _ in range(max(1, n)):
+            ok, bgr = cap.read()
+            if not ok:
+                break
+            rgb = resize_to_max_width(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB), max_width)
+            acc = rgb.astype(np.float32) if acc is None else acc + rgb
+            got += 1
+    finally:
+        cap.release()
+    if acc is None:
+        raise VideoError(f"No decodable frames in {path}")
+    return np.clip(acc / got, 0, 255).astype(np.uint8)
