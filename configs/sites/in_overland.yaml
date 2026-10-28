@@ -1,0 +1,6 @@
+name: in_overland
+reference: data/usgs/frames/in_overland/IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-18T17-05-02Z.jpg
+quad: [[0.5785, 0.275], [0.6443, 0.2842], [0.6057, 0.7961], [0.5387, 0.7816]]
+top_ft: 2.04
+bottom_ft: 0.14
+reg_region: [0.0, 0.0, 1.0, 0.55]
