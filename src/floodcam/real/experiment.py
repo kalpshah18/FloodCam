@@ -23,7 +23,9 @@ from floodcam.real.reader import (
 
 ROOT = Path(__file__).resolve().parents[3]
 TAUS = [4, 6, 8, 10, 13, 16, 20, 25, 30, 40]
-GATE_REL = 0.5   # sharpness gate: frame Laplacian variance >= GATE_REL x training median
+GATE_LO, GATE_HI = 0.55, 1.7   # image-quality gate: frame Laplacian variance within [LO, HI] x training median
+# (below: blur/fog/obstruction; above: lens dirt, spray, glare texture). Chosen from DEV-block error
+# vs Laplacian variance only (docs/DECISIONS.md); v1 of the gate was one-sided at 0.5.
 
 
 @dataclass
@@ -101,9 +103,14 @@ def fit_models(ds: Dataset, spec: SiteSpec, train: np.ndarray, seed: int = 0):
         mae = np.abs(pred - ds.gage_cm[train]).mean()
         if best is None or mae < best[0]:
             best = (mae, tau, a, c)
-    lap_thr = GATE_REL * float(np.median(np.expm1(ds.quality[train, 0])))
+    med = float(np.median(np.expm1(ds.quality[train, 0])))
     return tpl, feats, reader, {"tau": best[1], "a": best[2], "b": best[3], "train_mae": best[0],
-                                "lap_thr": lap_thr}
+                                "lap_lo": GATE_LO * med, "lap_hi": GATE_HI * med}
+
+
+def gate(log_lap: np.ndarray, base: dict) -> np.ndarray:
+    lap = np.expm1(log_lap)
+    return (lap >= base["lap_lo"]) & (lap <= base["lap_hi"])
 
 
 def predict_baseline(feats: np.ndarray, reader: PlateReader, base: dict) -> np.ndarray:
@@ -130,7 +137,7 @@ def run_cv(ds: Dataset, spec: SiteSpec, hold_blocks: list[str], train_blocks: li
         preds[test], margin[test] = cm, mg
         base_pred[test] = predict_baseline(feats[test], reader, base)
         taus[hb] = base["tau"]
-        accepted[test] = np.expm1(ds.quality[test, 0]) >= base["lap_thr"]
+        accepted[test] = gate(ds.quality[test, 0], base)
         if verbose:
             print(f"  fold {hb}: n={test.sum()} mae={np.abs(cm - ds.gage_cm[test]).mean():.2f} cm")
     sel = np.isin(ds.blocks, hold_blocks)
@@ -142,7 +149,7 @@ def summarize(ds: Dataset, res: dict) -> dict:
     """Metrics on all frames and on frames passing the sharpness gate (with coverage)."""
     sel = res["sel"]
     out = {"coverage": float(res["accepted"][sel].mean()),
-           "gate": f"frame Laplacian variance >= {GATE_REL} x training median"}
+           "gate": f"frame Laplacian variance in [{GATE_LO}, {GATE_HI}] x training median"}
     for scope, m in (("all_frames", sel), ("gated", sel & res["accepted"])):
         gt, blocks = ds.gage_cm[m], ds.blocks[m]
         sc = {}

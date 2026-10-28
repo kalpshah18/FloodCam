@@ -1,0 +1,17 @@
+kind,file,gauge_cm,est_cm,lapvar,borrowed,is_ir,overlay
+worst_accepted,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-14T15-00-13Z.jpg,0.0,58.14339,4357.3403,0.0,False,worst_accepted_2026-09-14T15-00-13.jpg
+worst_accepted,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-28T15-58-19Z.jpg,0.30479997,43.73847,4515.1143,0.0,False,worst_accepted_2026-09-28T15-58-19.jpg
+worst_accepted,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-03T14-00-16Z.jpg,0.0,40.04941,3284.9502,0.0,False,worst_accepted_2026-09-03T14-00-16.jpg
+worst_accepted,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2024-01-26T11-05-55Z.jpg,22.86,59.408237,941.84845,1.0,False,worst_accepted_2024-01-26T11-05-55.jpg
+worst_accepted,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-29T15-58-19Z.jpg,0.30479997,36.360344,4296.0728,0.0,False,worst_accepted_2026-09-29T15-58-19.jpg
+worst_accepted,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-27T15-58-19Z.jpg,0.30479997,35.306324,4580.9595,0.0,False,worst_accepted_2026-09-27T15-58-19.jpg
+worst_accepted,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-29T14-05-21Z.jpg,0.0,34.076637,4126.6333,0.0,False,worst_accepted_2026-09-29T14-05-21.jpg
+worst_accepted,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-25T13-00-27Z.jpg,0.0,32.49561,1711.2283,0.0,False,worst_accepted_2026-09-25T13-00-27.jpg
+worst_accepted,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2023-02-23T01-51-37Z.jpg,42.9768,11.981825,928.25793,1.0,True,worst_accepted_2023-02-23T01-51-37.jpg
+worst_accepted,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-25T14-05-22Z.jpg,0.0,28.982216,2884.43,0.0,False,worst_accepted_2026-09-25T14-05-22.jpg
+rejected,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2024-01-26T04-40-57Z.jpg,5.4864,22.2567,882.8821,1.0,False,rejected_2024-01-26T04-40-57.jpg
+rejected,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2024-01-26T05-01-32Z.jpg,6.096,12.372346,794.9147,1.0,True,rejected_2024-01-26T05-01-32.jpg
+rejected,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-19T03-00-05Z.jpg,0.0,19.14471,818.99255,1.0,False,rejected_2026-09-19T03-00-05.jpg
+rejected,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2023-03-04T02-15-24Z.jpg,38.4048,11.850874,622.515,1.0,False,rejected_2023-03-04T02-15-24.jpg
+rejected,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-18T05-00-04Z.jpg,9.4488,21.428417,834.53455,1.0,False,rejected_2026-09-18T05-00-04.jpg
+rejected,IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2024-01-26T06-45-59Z.jpg,18.288,29.584757,837.6879,1.0,False,rejected_2024-01-26T06-45-59.jpg

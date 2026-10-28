@@ -368,3 +368,44 @@ camera motion (up to 9 px drift).
 Sliders remain as fine-tune and as the fallback if the package is missing.
 
 **Decision:** Annotated video is encoded with ffmpeg (H.264) when available, else mp4v.
+
+## 2026-10-28: Real USGS footage pipeline (supersedes synthetic-only evaluation)
+
+**Decision:** Evaluate on real fixed-camera footage with official gauge labels (USGS cameras, see
+`docs/DATA_SOURCES.md`). Synthetic data stays for unit tests and the upload-dashboard demo only.
+**Why:** no self-collected data exists; the USGS S3 bucket was the only reachable real source.
+
+**Decision:** Read depth from the staff plate with a learned per-row classifier (gradient boosting
+on colour-change, texture and context features of the rectified plate strip, labels derived from the
+gauge) and a monotone change-point decode, instead of the vertical-strip HSV/change gauge. **Alternative
+kept as baseline:** the same decode on a thresholded dry-template colour change (threshold tuned on
+training blocks). **Why:** the plate is tilted and its appearance changes by season, lighting and
+infrared; a fixed threshold fails (see results/real/SUMMARY.md). No GPU or torch is needed.
+
+**Decision:** Split by calendar-month block (an event/session). Locked test blocks 2025-04 and 2026-04
+were fixed in `scripts/make_usgs_splits.py` before any model was trained. Tuning (HSV-free: baseline
+threshold, gate, registration references) used dev blocks only. Registration reference frames are
+chosen from dev blocks using image geometry only.
+
+**Decision:** Registration = SIFT homography to the best of 13 reference views (one per dev month), with
+a causal fallback that reuses the homography of the most recent registered frame (camera pose changes
+rarely). **Limit:** a pose change during a run of failed frames is not detected.
+
+**Decision (design change after seeing dev results, disclosed):** the image-quality gate was first
+one-sided (Laplacian variance >= 0.5 x median, to catch blur). Dev-block error vs Laplacian
+variance showed lens dirt/spray frames with variance 3000+ also fail, so the gate became two-sided
+[0.55, 1.7] x training median. The locked blocks had already been evaluated once with the one-sided
+gate; the run was repeated with `--force` and both results are kept
+(`results/real/final_v1_gate_one_sided_metrics.json`, `results/real/final_test_log.jsonl`). The gate
+is chosen from dev data only, but the second locked run is therefore not a pristine single look.
+
+**Decision:** Resolution sweep isolates the readout resolution: registration is computed once at native
+resolution, then the frame is area-downsampled by f and the plate re-sampled at 1/f rows. Registering at the
+degraded resolution was tried first and collapses at f >= 8 (registered fraction 34% at f=8, 6% at f=16,
+0% at f=32), which mixes a calibration failure with the question asked. Treat the sweep as "how coarse
+can the plate readout be once the camera is calibrated".
+
+**Limits to state in the report:** one camera/site (n = number of month blocks, 13 dev + 2 locked);
+the gauge sits beside the plate; depth below the plate bottom (~4 cm) is invisible, so values < ~4 cm
+are reported as 0; infrared and night frames share the model but are a different appearance; the
+labels (gage height) are not tape measures.

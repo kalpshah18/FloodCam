@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 from floodcam.real.experiment import (  # noqa: E402
     fit_models,
+    gate,
     load_dataset,
     predict_baseline,
     summarize,
@@ -52,7 +53,7 @@ def main() -> int:
     cm, mg = reader.predict_cm(feats[test])
     res = {"preds": np.full(len(ds.files), np.nan, np.float32), "margin": np.full(len(ds.files), np.nan, np.float32),
            "baseline": np.full(len(ds.files), np.nan, np.float32), "sel": test, "taus": {"all_dev": base["tau"]},
-           "accepted": np.expm1(ds.quality[:, 0]) >= base["lap_thr"]}
+           "accepted": gate(ds.quality[:, 0], base)}
     res["preds"][test], res["margin"][test] = cm, mg
     res["baseline"][test] = predict_baseline(feats[test], reader, base)
     summ = summarize(ds, res)

@@ -185,8 +185,10 @@ def main() -> int:
     res = resolution(FIG / "resolution.png")
     ev = [event_level(cv, "cv_dev")]
     fin = None
-    if (R / f"real-final-{SITE}-f1" / "predictions.csv").exists():
-        fd, fin = load(f"real-final-{SITE}-f1")
+    final_run = next((r for r in (f"real-final-{SITE}-f1-force", f"real-final-{SITE}-f1")
+                      if (R / r / "predictions.csv").exists()), None)
+    if final_run:
+        fd, fin = load(final_run)
         scatter(fd, "Locked test blocks (gated)", FIG / "scatter_final.png")
         for b in fd.block.unique():
             timeseries(fd, b, FIG / f"timeseries_final_{b}.png")
@@ -219,7 +221,8 @@ def main() -> int:
 
     block("Leave-one-block-out CV on dev blocks", summ)
     if fin:
-        block("Locked test blocks (evaluated once)", fin)
+        block("Locked test blocks (final gate, second and last run; see note)", fin)
+        L.append("\nNote: the locked blocks were evaluated first with a one-sided sharpness gate (results/real/final_v1_gate_one_sided_metrics.json). The two-sided gate was then chosen from DEV-block error only and the locked run repeated with --force; both runs are in results/real/final_test_log.jsonl.\n")
     if res:
         L.append("\n## Resolution sweep (gated, learned reader, LOBO CV)\n")
         L.append("| factor | cm/px | MAE | RMSE | near-3cm MAE | precision | recall | F1 |\n|---|---|---|---|---|---|---|---|")

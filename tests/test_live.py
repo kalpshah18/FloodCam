@@ -144,3 +144,15 @@ def test_annotated_video_export(demo, tmp_path):
     out = w.close()
     assert out is not None and out.stat().st_size > 1000
     assert probe_video(out).width == 640
+
+
+def test_real_view_apptest_runs():
+    """The real-footage view renders from committed demo data without errors."""
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(str(_APP), default_timeout=90)
+    at.run()
+    at.sidebar.radio(key="mode").set_value("Real USGS footage")
+    at.run()
+    assert not at.exception
+    assert any("Official gauge" in m.label for m in at.main.metric)

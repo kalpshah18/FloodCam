@@ -1,0 +1,18 @@
+{
+ "run_id": "real-final-in_overland-f1",
+ "site": "in_overland",
+ "factor": 1,
+ "git_commit": "56ae621",
+ "manifest_sha256_16": "0b7f9ab41c5fa3ea",
+ "split_sha256_16": "ce06eef532dcbcd1",
+ "synthetic": false,
+ "baseline_taus": {
+  "all_dev": 25
+ },
+ "protocol": "train on all dev blocks, evaluate locked blocks once",
+ "locked_blocks": [
+  "2025-04",
+  "2026-04"
+ ],
+ "seed": 0
+}

@@ -474,8 +474,13 @@ def main() -> None:
     st.title("FloodCam Monitor")
 
     mode = st.sidebar.radio(
-        "Mode", ["Upload video (live)", "Recorded runs (replay)"], key="mode",
+        "Mode", ["Upload video (live)", "Real USGS footage", "Recorded runs (replay)"], key="mode",
     )
+    if mode == "Real USGS footage":
+        from real_view import render as render_real
+
+        render_real()
+        return
     if mode == "Upload video (live)":
         from upload_view import render as render_upload
 
