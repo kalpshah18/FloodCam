@@ -5,42 +5,42 @@ Source: USGS gauge cameras + USGS gauge height (public domain); see data/usgs/RE
 
 ## Leave-one-block-out CV on dev blocks
 
-Coverage after sharpness gate: 81.2%
+Coverage after sharpness gate: 66.8%
 
 | scope | method | n | MAE cm | 95% CI (block bootstrap) | MAE near 3 cm | P(>=3cm) | R | F1 | false-alarm rate |
 |---|---|---|---|---|---|---|---|---|---|
 | all_frames | learned | 1976 | 3.38 | 2.05-4.47 | 5.85 | 0.93 | 0.93 | 0.93 | 0.113 |
 | all_frames | threshold_baseline | 1976 | 7.94 | 7.37-8.75 | 10.74 | 0.74 | 0.82 | 0.78 | 0.442 |
 | all_frames | always_no_flood | 1976 | 9.75 | 5.46-15.60 | 3.51 | nan | 0.00 | 0.00 | 0.000 |
-| gated | learned | 1605 | 2.02 | 1.14-2.93 | 5.30 | 0.95 | 0.95 | 0.95 | 0.058 |
-| gated | threshold_baseline | 1605 | 7.46 | 6.71-8.52 | 10.53 | 0.71 | 0.78 | 0.74 | 0.411 |
-| gated | always_no_flood | 1605 | 8.98 | 4.91-14.92 | 3.49 | nan | 0.00 | 0.00 | 0.000 |
+| gated | learned | 1319 | 1.13 | 0.67-1.69 | 4.80 | 0.97 | 0.96 | 0.97 | 0.036 |
+| gated | threshold_baseline | 1319 | 6.97 | 6.04-8.36 | 10.38 | 0.73 | 0.74 | 0.73 | 0.349 |
+| gated | always_no_flood | 1319 | 8.80 | 4.99-14.77 | 3.54 | nan | 0.00 | 0.00 | 0.000 |
 
 MAE by depth bin (gated, learned):
 
 | bin cm | n | MAE cm |
 |---|---|---|
-| 0-0.5 | 578 | 1.08 |
-| 0.5-3 | 8 | 4.99 |
-| 3-10 | 226 | 3.51 |
-| 10-25 | 549 | 2.14 |
-| >=25 | 129 | 3.88 |
+| 0-0.5 | 472 | 0.40 |
+| 0.5-3 | 7 | 3.81 |
+| 3-10 | 181 | 1.89 |
+| 10-25 | 459 | 1.48 |
+| >=25 | 100 | 1.80 |
 
-Per-block MAE (gated): median 2.00, IQR 0.95-3.29, worst 3.74 cm.
+Per-block MAE (gated): median 1.06, IQR 0.78-1.46, worst 3.78 cm.
 
 
-## Locked test blocks (evaluated once)
+## Locked test blocks (final gate, second and last run; see note)
 
-Coverage after sharpness gate: 85.9%
+Coverage after sharpness gate: 82.3%
 
 | scope | method | n | MAE cm | 95% CI (block bootstrap) | MAE near 3 cm | P(>=3cm) | R | F1 | false-alarm rate |
 |---|---|---|---|---|---|---|---|---|---|
 | all_frames | learned | 283 | 3.11 | 1.81-4.01 | 2.42 | 0.99 | 0.95 | 0.97 | 0.222 |
 | all_frames | threshold_baseline | 283 | 11.67 | 6.47-15.29 | 6.72 | 0.97 | 0.64 | 0.77 | 0.667 |
 | all_frames | always_no_flood | 283 | 19.77 | 18.98-20.32 | 3.66 | nan | 0.00 | 0.00 | 0.000 |
-| gated | learned | 243 | 1.13 | 0.77-1.59 | 2.42 | 1.00 | 0.98 | 0.99 | 0.000 |
-| gated | threshold_baseline | 243 | 11.40 | 6.70-15.04 | 6.72 | 0.97 | 0.59 | 0.73 | 0.571 |
-| gated | always_no_flood | 243 | 19.11 | 18.92-19.26 | 3.66 | nan | 0.00 | 0.00 | 0.000 |
+| gated | learned | 233 | 0.79 | 0.77-0.82 | 2.42 | 1.00 | 0.99 | 0.99 | 0.000 |
+| gated | threshold_baseline | 233 | 11.52 | 6.49-15.04 | 6.72 | 0.97 | 0.57 | 0.72 | 0.571 |
+| gated | always_no_flood | 233 | 18.90 | 18.39-19.26 | 3.66 | nan | 0.00 | 0.00 | 0.000 |
 
 MAE by depth bin (gated, learned):
 
@@ -48,45 +48,48 @@ MAE by depth bin (gated, learned):
 |---|---|---|
 | 0-0.5 | 6 | 0.00 |
 | 0.5-3 | 1 | 2.74 |
-| 3-10 | 39 | 1.72 |
-| 10-25 | 126 | 1.07 |
-| >=25 | 71 | 0.99 |
+| 3-10 | 38 | 1.60 |
+| 10-25 | 122 | 0.76 |
+| >=25 | 66 | 0.43 |
 
-Per-block MAE (gated): median 1.18, IQR 0.98-1.39, worst 1.59 cm.
+Per-block MAE (gated): median 0.79, IQR 0.78-0.81, worst 0.82 cm.
+
+
+Note: the locked blocks were evaluated first with a one-sided sharpness gate (results/real/final_v1_gate_one_sided_metrics.json). The two-sided gate was then chosen from DEV-block error only and the locked run repeated with --force; both runs are in results/real/final_test_log.jsonl.
 
 
 ## Resolution sweep (gated, learned reader, LOBO CV)
 
 | factor | cm/px | MAE | RMSE | near-3cm MAE | precision | recall | F1 |
 |---|---|---|---|---|---|---|---|
-| 1 | 0.16 | 2.02 | 5.31 | 5.30 | 0.95 | 0.95 | 0.95 |
-| 2 | 0.31 | 2.05 | 5.31 | 5.00 | 0.95 | 0.95 | 0.95 |
-| 4 | 0.62 | 1.95 | 5.06 | 5.19 | 0.95 | 0.95 | 0.95 |
-| 8 | 1.25 | 2.05 | 5.16 | 5.29 | 0.94 | 0.95 | 0.95 |
-| 16 | 2.49 | 2.20 | 5.24 | 5.27 | 0.95 | 0.94 | 0.94 |
-| 32 | 4.98 | 2.46 | 5.17 | 6.33 | 0.95 | 0.91 | 0.93 |
-| 64 | 9.96 | 4.08 | 7.08 | 7.06 | 0.88 | 0.79 | 0.84 |
+| 1 | 0.16 | 1.13 | 3.08 | 4.80 | 0.97 | 0.96 | 0.97 |
+| 2 | 0.31 | 1.17 | 3.22 | 4.64 | 0.97 | 0.96 | 0.96 |
+| 4 | 0.62 | 1.08 | 2.96 | 4.85 | 0.97 | 0.95 | 0.96 |
+| 8 | 1.25 | 1.23 | 3.22 | 4.87 | 0.96 | 0.94 | 0.95 |
+| 16 | 2.49 | 1.36 | 3.16 | 5.06 | 0.96 | 0.94 | 0.95 |
+| 32 | 4.98 | 1.84 | 3.82 | 6.16 | 0.96 | 0.91 | 0.93 |
+| 64 | 9.96 | 3.61 | 6.28 | 6.76 | 0.88 | 0.78 | 0.83 |
 
-Error-model fit RMSE^2 = (sigma_v*s)^2 + floor^2: sigma_v = 0.48 px, floor = 5.11 cm.
+Error-model fit RMSE^2 = (sigma_v*s)^2 + floor^2: sigma_v = 0.55 px, floor = 3.00 cm.
 
 
 ## Event level (causal median filter, hysteresis 3.5/2.5 cm)
 
 ```
         run   block  span_days  gt_episodes  detected  false_episodes  median_onset_delay_h  false_per_day
-     cv_dev 2023-02      19.24            3         3               0               -317.01           0.00
-     cv_dev 2023-03      22.41            2         2               0               -233.00           0.00
+     cv_dev 2023-02      19.24            3         3               0               -316.67           0.00
+     cv_dev 2023-03      22.41            2         2               0               -233.32           0.00
      cv_dev 2024-01       2.45            1         1               0                 -1.17           0.00
      cv_dev 2024-03       0.81            1         1               0                  0.57           0.00
-     cv_dev 2024-04      27.85            3         3               1               -219.75           0.04
+     cv_dev 2024-04      27.85            3         3               0               -217.83           0.00
      cv_dev 2024-12       0.45            1         1               0                  1.08           0.00
-     cv_dev 2025-01       0.36            1         1               0                  0.00           0.00
+     cv_dev 2025-01       0.36            1         1               0                  0.34           0.00
      cv_dev 2025-06       1.13            1         1               0                  0.67           0.00
-     cv_dev 2025-07       1.12            1         1               0                  1.33           0.00
+     cv_dev 2025-07       1.12            1         1               0                  1.67           0.00
      cv_dev 2026-03       0.12            1         0               0                   NaN           0.00
      cv_dev 2026-07      16.83            0         0               1                   NaN           0.06
      cv_dev 2026-08      14.92            1         1               0                  0.66           0.00
-     cv_dev 2026-09      29.80            3         3               5                  0.67           0.17
+     cv_dev 2026-09      29.80            3         3               0                  0.67           0.00
 locked_test 2025-04       3.59            2         2               0                -32.55           0.00
 locked_test 2026-04      18.01            4         4               0               -177.00           0.00
 ```
