@@ -34,9 +34,11 @@ class SiteSpec:
 
 @dataclass
 class Registration:
-    H: np.ndarray        # frame -> reference
+    H: np.ndarray        # frame -> main reference
     inliers: int
     ok: bool
+    ref_id: int = 0
+    borrowed: bool = False   # H copied from the last successfully registered earlier frame
 
 
 class PlateRectifier:
@@ -56,6 +58,22 @@ class PlateRectifier:
         self._sift = cv2.SIFT_create(nfeatures=2000)
         self._bf = cv2.BFMatcher(cv2.NORM_L2)
         self._ref_kp, self._ref_desc = self._features(ref)
+        # additional reference views (other epochs of the same camera), each with its homography to
+        # the main reference; see scripts/build_refs.py
+        self._extra: list[tuple] = []
+        refs_json = ROOT / "configs" / "sites" / f"{spec.name}_refs.json"
+        if refs_json.exists():
+            import json
+
+            S = np.diag([scale, scale, 1.0])
+            for r in json.loads(refs_json.read_text()):
+                img = cv2.imread(str(ROOT / r["file"]))
+                if img is not None:
+                    if scale != 1.0:
+                        img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+                    kp, desc = self._features(img)
+                    Hr = S @ np.array(r["H"], np.float64) @ np.linalg.inv(S)
+                    self._extra.append((kp, desc, Hr))
         h, w = self.ref_shape
         self._quad_px = (np.array(spec.quad, np.float32) * [w, h]).astype(np.float32)
 
@@ -74,22 +92,35 @@ class PlateRectifier:
             return bgr
         return cv2.resize(bgr, (self.ref_shape[1], self.ref_shape[0]), interpolation=cv2.INTER_AREA)
 
-    def register(self, bgr: np.ndarray) -> Registration:
-        bgr = self._scaled(bgr)
-        kp, desc = self._features(bgr)
-        if desc is None or self._ref_desc is None or len(kp) < 12:
-            return Registration(np.eye(3), 0, False)
-        matches = self._bf.knnMatch(desc, self._ref_desc, k=2)
+    def _match(self, kp, desc, ref_kp, ref_desc):
+        if desc is None or ref_desc is None or len(kp) < 12:
+            return None, 0
+        matches = self._bf.knnMatch(desc, ref_desc, k=2)
         good = [m for m, n in (p for p in matches if len(p) == 2) if m.distance < 0.75 * n.distance]
         if len(good) < 12:
-            return Registration(np.eye(3), len(good), False)
+            return None, len(good)
         src = np.float32([kp[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
-        dst = np.float32([self._ref_kp[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
+        dst = np.float32([ref_kp[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
         H, inl = cv2.findHomography(src, dst, cv2.RANSAC, 3.0)
         if H is None:
+            return None, 0
+        return H, int(inl.sum())
+
+    def register(self, bgr: np.ndarray, use_extra: bool = True) -> Registration:
+        bgr = self._scaled(bgr)
+        kp, desc = self._features(bgr)
+        best_H, best_n, best_id = None, 0, 0
+        H, n = self._match(kp, desc, self._ref_kp, self._ref_desc)
+        if H is not None:
+            best_H, best_n = H, n
+        if use_extra and best_n < 60:
+            for i, (rk, rd, Hr) in enumerate(self._extra, start=1):
+                H, n = self._match(kp, desc, rk, rd)
+                if H is not None and n > best_n:
+                    best_H, best_n, best_id = Hr @ H, n, i
+        if best_H is None:
             return Registration(np.eye(3), 0, False)
-        n_in = int(inl.sum())
-        return Registration(H, n_in, n_in >= 15)
+        return Registration(best_H, best_n, best_n >= 15, best_id)
 
     def strip(self, bgr: np.ndarray, reg: Registration | None = None) -> np.ndarray:
         """(strip_rows, strip_cols, 3) uint8 BGR plate strip, row 0 = top_ft."""

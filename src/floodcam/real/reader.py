@@ -60,7 +60,7 @@ class DryTemplate:
 
 
 def row_features(stats: dict[str, np.ndarray], tpl: DryTemplate, is_ir: np.ndarray,
-                 reg_ok: np.ndarray, ctx: int = 15) -> np.ndarray:
+                 reg_ok: np.ndarray, ctx: int = 15, extra: np.ndarray | None = None) -> np.ndarray:
     """(N, R, F) feature tensor."""
     lab = stats["lab"]
     N, R, _ = lab.shape
@@ -91,6 +91,8 @@ def row_features(stats: dict[str, np.ndarray], tpl: DryTemplate, is_ir: np.ndarr
         np.repeat(stats["mean_l"][:, None], R, 1),
         np.repeat(reg_ok[:, None].astype(np.float32), R, 1),
     ]
+    if extra is not None:  # frame-level quality features (N, k), repeated over rows
+        F += [np.repeat(extra[:, j][:, None], R, 1) for j in range(extra.shape[1])]
     return np.stack(F, axis=-1).astype(np.float32)
 
 

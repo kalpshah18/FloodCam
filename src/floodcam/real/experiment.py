@@ -39,6 +39,7 @@ class Dataset:
     times: np.ndarray
     stats: dict
     split: dict
+    quality: np.ndarray  # (N, k) frame-level features: log lapvar, brightness, borrowed-H flag
 
     @property
     def R(self) -> int:
@@ -53,11 +54,16 @@ def load_dataset(site: str, factor: int = 1) -> Dataset:
     rows = [man[f] for f in files]
     split = json.loads((ROOT / "data/splits" / f"usgs_{site}.json").read_text())
     gage = np.array([r["gage_ft"] for r in rows], np.float32)
+    n = len(files)
+    lap = z["lapvar"] if "lapvar" in z else np.ones(n)
+    bright = z["bright"] if "bright" in z else np.zeros(n)
+    borrowed = z["borrowed"] if "borrowed" in z else np.zeros(n, bool)
+    quality = np.stack([np.log1p(lap), bright / 255.0, borrowed.astype(np.float32)], axis=1).astype(np.float32)
     return Dataset(
         site=site, factor=factor, strips=z["strips"], reg_ok=z["reg_ok"], files=files,
         gage_ft=gage, gage_cm=gage * FT_TO_CM, is_ir=np.array([r["is_ir"] for r in rows]),
         blocks=np.array([r["time"][:7] for r in rows]), times=np.array([r["time"] for r in rows]),
-        stats=strip_stats(z["strips"]), split=split,
+        stats=strip_stats(z["strips"]), split=split, quality=quality,
     )
 
 
@@ -80,7 +86,7 @@ def fit_models(ds: Dataset, spec: SiteSpec, train: np.ndarray, seed: int = 0):
     if dry.sum() < 5:
         dry = train & (ds.gage_ft <= 0.02)
     tpl = DryTemplate.fit(ds.stats, dry)
-    feats = row_features(ds.stats, tpl, ds.is_ir, ds.reg_ok)
+    feats = row_features(ds.stats, tpl, ds.is_ir, ds.reg_ok, extra=ds.quality)
     reader = PlateReader(spec.top_ft, spec.bottom_ft, template=tpl)
     reader.fit(feats[train], ds.gage_ft[train], seed=seed)
     # threshold baseline: tune tau on training frames, calibrate its own affine map
@@ -154,6 +160,7 @@ def write_run(run_id: str, ds: Dataset, res: dict, summary: dict, extra: dict) -
         "gauge_cm": ds.gage_cm[sel], "learned_cm": res["preds"][sel],
         "baseline_cm": res["baseline"][sel], "margin": res["margin"][sel],
         "is_ir": ds.is_ir[sel], "reg_ok": ds.reg_ok[sel],
+        "lapvar": np.expm1(ds.quality[sel, 0]), "borrowed": ds.quality[sel, 2],
     }).to_csv(out / "predictions.csv", index=False)
     (out / "metrics.json").write_text(json.dumps(summary, indent=1))
     try:
