@@ -31,8 +31,7 @@ def _init(site: str, factor: int) -> None:
     global _PR, _F
     _F = factor
     spec = SiteSpec.load(site)
-    _PR = PlateRectifier(spec, max(6, round(NATIVE_ROWS / factor)), max(4, round(NATIVE_COLS / factor)),
-                         scale=1.0 / factor)
+    _PR = PlateRectifier(spec, max(6, round(NATIVE_ROWS / factor)), max(4, round(NATIVE_COLS / factor)))
 
 
 def _register(path: str):
@@ -47,6 +46,8 @@ def _strip(arg):
     from floodcam.real.plate import Registration
 
     img = cv2.imread(str(ROOT / path))
+    if _F > 1:  # native-resolution geometry, degraded readout (see real_resolution.py)
+        return _PR.strip_lowres(img, H, _F)
     return _PR.strip(img, Registration(H, 0, True))
 
 
@@ -58,29 +59,39 @@ def main() -> int:
     a = ap.parse_args()
     rows = [json.loads(line) for line in (ROOT / "data/usgs/manifest.jsonl").read_text().splitlines()]
     rows = [r for r in rows if r["site"] == a.site]
+    dest = ROOT / "data/usgs/strips"
+    dest.mkdir(exist_ok=True)
     with Pool(a.workers, initializer=_init, initargs=(a.site, a.factor)) as pool:
-        regs = pool.map(_register, [r["path"] for r in rows], chunksize=16)
-        Hs = [r[0] for r in regs]
-        ok = np.array([r[1] for r in regs])
+        if a.factor == 1:
+            regs = pool.map(_register, [r["path"] for r in rows], chunksize=16)
+            Hs = [r[0] for r in regs]
+            ok = np.array([r[1] for r in regs])
+        else:  # reuse the native-resolution registration (run factor 1 first)
+            z1 = np.load(dest / f"{a.site}_f1.npz")
+            Hs = list(z1["H"])
+            ok = z1["reg_ok"]
+            regs = [(Hs[i], bool(ok[i]), int(z1["inliers"][i]), int(z1["ref_id"][i]),
+                     float(z1["lapvar"][i]), float(z1["bright"][i])) for i in range(len(rows))]
         # Causal fallback: a frame that fails to register borrows the homography of the most recent
         # earlier frame that did (the camera is fixed, so its pose changes rarely). Uses only past
         # frames, as a deployed system could. Frames before the first success keep ok=False.
         borrowed = np.zeros(len(rows), bool)
-        last = None
-        for i in range(len(rows)):
-            if ok[i]:
-                last = Hs[i]
-            elif last is not None:
-                Hs[i] = last
-                borrowed[i] = True
+        if a.factor == 1:
+            last = None
+            for i in range(len(rows)):
+                if ok[i]:
+                    last = Hs[i]
+                elif last is not None:
+                    Hs[i] = last
+                    borrowed[i] = True
+        else:
+            borrowed = z1["borrowed"]
         strips = np.stack(pool.map(_strip, [(r["path"], H) for r, H in zip(rows, Hs)], chunksize=16))
-    dest = ROOT / "data/usgs/strips"
-    dest.mkdir(exist_ok=True)
     np.savez_compressed(
         dest / f"{a.site}_f{a.factor}.npz", strips=strips, reg_ok=ok, borrowed=borrowed,
         inliers=np.array([r[2] for r in regs]), ref_id=np.array([r[3] for r in regs]),
         lapvar=np.array([r[4] for r in regs]), bright=np.array([r[5] for r in regs]),
-        files=np.array([r["file"] for r in rows]),
+        files=np.array([r["file"] for r in rows]), H=np.stack(Hs),
     )
     print(f"{a.site} f={a.factor}: {strips.shape}, registered {ok.mean():.1%}, "
           f"borrowed {borrowed.mean():.1%}, unresolved {(~ok & ~borrowed).mean():.1%}")

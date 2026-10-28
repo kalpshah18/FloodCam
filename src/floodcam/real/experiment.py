@@ -23,6 +23,7 @@ from floodcam.real.reader import (
 
 ROOT = Path(__file__).resolve().parents[3]
 TAUS = [4, 6, 8, 10, 13, 16, 20, 25, 30, 40]
+GATE_REL = 0.5   # sharpness gate: frame Laplacian variance >= GATE_REL x training median
 
 
 @dataclass
@@ -100,7 +101,9 @@ def fit_models(ds: Dataset, spec: SiteSpec, train: np.ndarray, seed: int = 0):
         mae = np.abs(pred - ds.gage_cm[train]).mean()
         if best is None or mae < best[0]:
             best = (mae, tau, a, c)
-    return tpl, feats, reader, {"tau": best[1], "a": best[2], "b": best[3], "train_mae": best[0]}
+    lap_thr = GATE_REL * float(np.median(np.expm1(ds.quality[train, 0])))
+    return tpl, feats, reader, {"tau": best[1], "a": best[2], "b": best[3], "train_mae": best[0],
+                                "lap_thr": lap_thr}
 
 
 def predict_baseline(feats: np.ndarray, reader: PlateReader, base: dict) -> np.ndarray:
@@ -118,6 +121,7 @@ def run_cv(ds: Dataset, spec: SiteSpec, hold_blocks: list[str], train_blocks: li
     margin = np.full(len(ds.files), np.nan, np.float32)
     base_pred = np.full(len(ds.files), np.nan, np.float32)
     taus = {}
+    accepted = np.zeros(len(ds.files), bool)
     for hb in hold_blocks:
         train = np.isin(ds.blocks, [b for b in train_blocks if b != hb])
         test = ds.blocks == hb
@@ -126,26 +130,31 @@ def run_cv(ds: Dataset, spec: SiteSpec, hold_blocks: list[str], train_blocks: li
         preds[test], margin[test] = cm, mg
         base_pred[test] = predict_baseline(feats[test], reader, base)
         taus[hb] = base["tau"]
+        accepted[test] = np.expm1(ds.quality[test, 0]) >= base["lap_thr"]
         if verbose:
             print(f"  fold {hb}: n={test.sum()} mae={np.abs(cm - ds.gage_cm[test]).mean():.2f} cm")
     sel = np.isin(ds.blocks, hold_blocks)
-    return {"preds": preds, "margin": margin, "baseline": base_pred, "sel": sel, "taus": taus}
+    return {"preds": preds, "margin": margin, "baseline": base_pred, "sel": sel, "taus": taus,
+            "accepted": accepted}
 
 
 def summarize(ds: Dataset, res: dict) -> dict:
+    """Metrics on all frames and on frames passing the sharpness gate (with coverage)."""
     sel = res["sel"]
-    gt = ds.gage_cm[sel]
-    blocks = ds.blocks[sel]
-    out = {}
-    trivial = np.zeros_like(gt)
-    for name, pred in (("learned", res["preds"][sel]), ("threshold_baseline", res["baseline"][sel]),
-                       ("always_no_flood", trivial)):
-        out[name] = {
-            "depth": depth_metrics(gt, pred),
-            "flood_3cm": flood_metrics(gt, pred),
-            "by_block": block_summary(blocks, gt, pred),
-            "mae_ci95_block_bootstrap": block_bootstrap_ci(blocks, gt, pred),
-        }
+    out = {"coverage": float(res["accepted"][sel].mean()),
+           "gate": f"frame Laplacian variance >= {GATE_REL} x training median"}
+    for scope, m in (("all_frames", sel), ("gated", sel & res["accepted"])):
+        gt, blocks = ds.gage_cm[m], ds.blocks[m]
+        sc = {}
+        for name, pred in (("learned", res["preds"][m]), ("threshold_baseline", res["baseline"][m]),
+                           ("always_no_flood", np.zeros_like(gt))):
+            sc[name] = {
+                "depth": depth_metrics(gt, pred),
+                "flood_3cm": flood_metrics(gt, pred),
+                "by_block": block_summary(blocks, gt, pred),
+                "mae_ci95_block_bootstrap": block_bootstrap_ci(blocks, gt, pred),
+            }
+        out[scope] = sc
     return out
 
 
@@ -159,7 +168,7 @@ def write_run(run_id: str, ds: Dataset, res: dict, summary: dict, extra: dict) -
         "file": ds.files[sel], "time": ds.times[sel], "block": ds.blocks[sel],
         "gauge_cm": ds.gage_cm[sel], "learned_cm": res["preds"][sel],
         "baseline_cm": res["baseline"][sel], "margin": res["margin"][sel],
-        "is_ir": ds.is_ir[sel], "reg_ok": ds.reg_ok[sel],
+        "is_ir": ds.is_ir[sel], "reg_ok": ds.reg_ok[sel], "accepted": res["accepted"][sel],
         "lapvar": np.expm1(ds.quality[sel, 0]), "borrowed": ds.quality[sel, 2],
     }).to_csv(out / "predictions.csv", index=False)
     (out / "metrics.json").write_text(json.dumps(summary, indent=1))

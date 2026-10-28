@@ -51,7 +51,8 @@ def main() -> int:
     _, feats, reader, base = fit_models(ds, spec, train, a.seed)
     cm, mg = reader.predict_cm(feats[test])
     res = {"preds": np.full(len(ds.files), np.nan, np.float32), "margin": np.full(len(ds.files), np.nan, np.float32),
-           "baseline": np.full(len(ds.files), np.nan, np.float32), "sel": test, "taus": {"all_dev": base["tau"]}}
+           "baseline": np.full(len(ds.files), np.nan, np.float32), "sel": test, "taus": {"all_dev": base["tau"]},
+           "accepted": np.expm1(ds.quality[:, 0]) >= base["lap_thr"]}
     res["preds"][test], res["margin"][test] = cm, mg
     res["baseline"][test] = predict_baseline(feats[test], reader, base)
     summ = summarize(ds, res)
@@ -61,9 +62,11 @@ def main() -> int:
     with LOG.open("a") as f:
         f.write(json.dumps({"time": time.time(), "site": a.site, "factor": a.factor,
                             "run_id": run_id, "forced": bool(a.force)}) + "\n")
-    for name, s in summ.items():
-        d, fl = s["depth"], s["flood_3cm"]
-        print(f"{name:20s} MAE {d['mae_cm']:.2f} cm  P {fl['precision']:.2f} R {fl['recall']:.2f}")
+    print(f"coverage after sharpness gate: {summ['coverage']:.1%}")
+    for scope in ("all_frames", "gated"):
+        for name, sc in summ[scope].items():
+            d, fl = sc["depth"], sc["flood_3cm"]
+            print(f"{scope:10s} {name:20s} MAE {d['mae_cm']:.2f} cm  P {fl['precision']:.2f} R {fl['recall']:.2f}")
     print("wrote", out)
     return 0
 

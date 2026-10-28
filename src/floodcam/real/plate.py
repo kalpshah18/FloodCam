@@ -134,6 +134,18 @@ class PlateRectifier:
         return cv2.warpPerspective(bgr, M, (self.strip_cols, self.strip_rows),
                                    flags=cv2.INTER_AREA, borderMode=cv2.BORDER_REPLICATE)
 
+    def strip_lowres(self, bgr: np.ndarray, H: np.ndarray, factor: int) -> np.ndarray:
+        """Strip as seen by a camera with `factor`-times fewer pixels per side, using the full-
+        resolution registration H (camera geometry calibrated once at native resolution)."""
+        h, w = bgr.shape[:2]
+        small = cv2.resize(bgr, (max(1, w // factor), max(1, h // factor)), interpolation=cv2.INTER_AREA)
+        dst = np.array([[0, 0], [self.strip_cols, 0], [self.strip_cols, self.strip_rows],
+                        [0, self.strip_rows]], np.float32)
+        Hq = cv2.getPerspectiveTransform(self._quad_px, dst)
+        M = Hq @ H @ np.diag([float(factor), float(factor), 1.0])
+        return cv2.warpPerspective(small, M, (self.strip_cols, self.strip_rows),
+                                   flags=cv2.INTER_AREA, borderMode=cv2.BORDER_REPLICATE)
+
     def row_heights_ft(self) -> np.ndarray:
         n = self.strip_rows
         k = (np.arange(n) + 0.5) / n

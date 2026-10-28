@@ -33,11 +33,13 @@ def main() -> int:
     run_id = a.run_id or f"real-cv-{a.site}-f{a.factor}"
     out = write_run(run_id, ds, res, summ, {"protocol": "leave-one-block-out on dev blocks",
                                             "seed": a.seed, "dev_blocks": dev})
-    for name, s in summ.items():
-        d, f = s["depth"], s["flood_3cm"]
-        print(f"{name:20s} MAE {d['mae_cm']:.2f} cm (CI {s['mae_ci95_block_bootstrap'][0]:.2f}-"
-              f"{s['mae_ci95_block_bootstrap'][1]:.2f}) near3cm {d['near_3cm']['mae_cm']} "
-              f"P {f['precision']:.2f} R {f['recall']:.2f} FAR {f['false_alarm_rate']:.3f}")
+    print(f"coverage after sharpness gate: {summ['coverage']:.1%}")
+    for scope in ("all_frames", "gated"):
+        for name, sc in summ[scope].items():
+            d, f = sc["depth"], sc["flood_3cm"]
+            lo, hi = sc["mae_ci95_block_bootstrap"]
+            print(f"{scope:10s} {name:20s} MAE {d['mae_cm']:.2f} cm (CI {lo:.2f}-{hi:.2f}) "
+                  f"P {f['precision']:.2f} R {f['recall']:.2f} FAR {f['false_alarm_rate']:.3f}")
     print("wrote", out)
     return 0
 
