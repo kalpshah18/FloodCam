@@ -1,6 +1,6 @@
 [
  {
-  "file": "data/usgs/frames/in_overland/IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2023-02-23T17-46-08Z.jpg",
+  "file": "models/in_overland/ref_00_2023-02.jpg",
   "H": [
    [
     1.1777334708108558,
@@ -22,7 +22,7 @@
   "inliers": 54
  },
  {
-  "file": "data/usgs/frames/in_overland/IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2023-03-25T18-45-26Z.jpg",
+  "file": "models/in_overland/ref_01_2023-03.jpg",
   "H": [
    [
     1.1682267771098471,
@@ -44,7 +44,7 @@
   "inliers": 55
  },
  {
-  "file": "data/usgs/frames/in_overland/IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2024-01-25T18-20-02Z.jpg",
+  "file": "models/in_overland/ref_02_2024-01.jpg",
   "H": [
    [
     1.1622299174209019,
@@ -66,7 +66,7 @@
   "inliers": 57
  },
  {
-  "file": "data/usgs/frames/in_overland/IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2024-03-14T21-55-22Z.jpg",
+  "file": "models/in_overland/ref_03_2024-03.jpg",
   "H": [
    [
     0.983256926724785,
@@ -88,7 +88,7 @@
   "inliers": 56
  },
  {
-  "file": "data/usgs/frames/in_overland/IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2024-04-02T11-35-10Z.jpg",
+  "file": "models/in_overland/ref_04_2024-04.jpg",
   "H": [
    [
     0.9667839134452438,
@@ -110,7 +110,7 @@
   "inliers": 52
  },
  {
-  "file": "data/usgs/frames/in_overland/IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2024-12-31T16-40-02Z.jpg",
+  "file": "models/in_overland/ref_05_2024-12.jpg",
   "H": [
    [
     1.0085566288719623,
@@ -132,7 +132,7 @@
   "inliers": 61
  },
  {
-  "file": "data/usgs/frames/in_overland/IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2025-06-19T15-10-02Z.jpg",
+  "file": "models/in_overland/ref_06_2025-06.jpg",
   "H": [
    [
     0.9993136798992345,
@@ -154,7 +154,7 @@
   "inliers": 69
  },
  {
-  "file": "data/usgs/frames/in_overland/IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2025-07-31T12-36-44Z.jpg",
+  "file": "models/in_overland/ref_07_2025-07.jpg",
   "H": [
    [
     0.9965837855812633,
@@ -176,7 +176,7 @@
   "inliers": 72
  },
  {
-  "file": "data/usgs/frames/in_overland/IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-03-31T21-00-21Z.jpg",
+  "file": "models/in_overland/ref_08_2026-03.jpg",
   "H": [
    [
     0.9958914754367896,
@@ -198,7 +198,7 @@
   "inliers": 51
  },
  {
-  "file": "data/usgs/frames/in_overland/IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-07-26T18-00-08Z.jpg",
+  "file": "models/in_overland/ref_09_2026-07.jpg",
   "H": [
    [
     0.9886900979476638,
@@ -220,7 +220,7 @@
   "inliers": 81
  },
  {
-  "file": "data/usgs/frames/in_overland/IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-08-03T22-05-02Z.jpg",
+  "file": "models/in_overland/ref_10_2026-08.jpg",
   "H": [
    [
     0.9986926577689434,
@@ -242,7 +242,7 @@
   "inliers": 84
  },
  {
-  "file": "data/usgs/frames/in_overland/IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-21T17-05-21Z.jpg",
+  "file": "models/in_overland/ref_11_2026-09.jpg",
   "H": [
    [
     0.9942745775742383,

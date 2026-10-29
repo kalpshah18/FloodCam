@@ -7,9 +7,16 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+
 from floodcam.real.events import causal_median, episodes, match_episodes
 from floodcam.real.metrics import block_bootstrap_ci, depth_metrics, flood_metrics
-from floodcam.real.reader import DryTemplate, PlateReader, decode_boundary, row_features, strip_stats
+from floodcam.real.reader import (
+    DryTemplate,
+    PlateReader,
+    decode_boundary,
+    row_features,
+    strip_stats,
+)
 
 ROOT = Path(__file__).parent.parent
 
@@ -112,3 +119,24 @@ def test_usgs_split_has_no_leakage():
 def test_cv_script_never_trains_on_locked_blocks():
     src = (ROOT / "scripts/real_cv.py").read_text()
     assert "locked_test_blocks" in src and "dev_blocks" in src
+
+
+def test_trained_bundle_reads_demo_frames():
+    """The committed production bundle loads and reads real (640 px) demo frames sensibly."""
+    import cv2
+    import pandas as pd
+
+    from floodcam.real.infer import PlateModel
+
+    demo = ROOT / "data/usgs/demo"
+    model = PlateModel.load("models/in_overland/reader.joblib")
+    d = pd.read_csv(demo / "demo.csv")
+    wet = d[d.gauge_cm > 10].head(6)
+    dry = d[d.gauge_cm <= 0.5].head(6)
+    errs = []
+    for r in pd.concat([wet, dry]).itertuples():
+        out = model.read(cv2.imread(str(demo / "frames" / r.file)))
+        if out.status == "ok":
+            errs.append(abs(out.depth_cm - max(r.gauge_cm, 0)))
+    assert len(errs) >= 4, "most demo frames should register and pass the quality gate"
+    assert float(np.median(errs)) < 8.0

@@ -1,0 +1,31 @@
+{
+ "site": "in_overland",
+ "strip_rows": 360,
+ "strip_cols": 48,
+ "lap_lo": 925.3044372558594,
+ "lap_hi": 2860.0318969726563,
+ "trained_on_blocks": [
+  "2023-02",
+  "2023-03",
+  "2024-01",
+  "2024-03",
+  "2024-04",
+  "2024-12",
+  "2025-01",
+  "2025-04",
+  "2025-06",
+  "2025-07",
+  "2026-03",
+  "2026-04",
+  "2026-07",
+  "2026-08",
+  "2026-09"
+ ],
+ "n_frames": 2259,
+ "seed": 0,
+ "git_commit": "213a3d5",
+ "created_utc": "2026-10-29T13:50:46Z",
+ "manifest_sha256_16": "0b7f9ab41c5fa3ea",
+ "in_sample_mae_cm": 1.7669690844842214,
+ "note": "Trained on all blocks including the locked test blocks; see results/real for held-out evaluation of the dev-only model."
+}

@@ -9,6 +9,7 @@ Only image geometry is used; no gauge labels. Locked test blocks never supply re
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -39,7 +40,10 @@ def main(site: str = "in_overland") -> int:
             if reg.ok and (best is None or reg.inliers > best[1]):
                 best = (f, reg.inliers, reg.H)
         if best and best[1] >= 30:
-            refs.append({"file": man[best[0]]["path"], "H": np.asarray(best[2]).tolist(),
+            dst = ROOT / "models" / site / f"ref_{len(refs):02d}_{blk}.jpg"   # committed copy
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(ROOT / man[best[0]]["path"], dst)
+            refs.append({"file": str(dst.relative_to(ROOT)), "H": np.asarray(best[2]).tolist(),
                          "block": blk, "inliers": best[1]})
             print(blk, best[0][-24:], best[1])
     (ROOT / "configs/sites" / f"{site}_refs.json").write_text(json.dumps(refs, indent=1))

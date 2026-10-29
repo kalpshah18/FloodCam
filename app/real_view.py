@@ -65,7 +65,8 @@ def render() -> None:
     st.caption("Real fixed-camera frames of a staff plate on a shallow overland-flow site, labelled by "
                "the official USGS gauge. The estimate shown for each frame comes from a model that "
                "never saw that month.")
-    tab_replay, tab_results, tab_audit = st.tabs(["Event replay", "Results", "Failure audit"])
+    tab_replay, tab_results, tab_audit, tab_try = st.tabs(
+        ["Event replay", "Results", "Failure audit", "Try a frame"])
 
     with tab_replay:
         demo_csv = DEMO / "demo.csv"
@@ -134,3 +135,46 @@ def render() -> None:
             for r in df.itertuples():
                 st.image(str(R / "failures" / r.overlay), caption=f"{r.kind}: gauge {r.gauge_cm:.1f} cm, "
                          f"estimate {r.est_cm:.1f} cm", use_container_width=True)
+
+    with tab_try:
+        st.caption("Upload a frame from the same camera (USGS IN Overland Flow East of Bull Rapids Road, "
+                   "STAFF). The production model was trained on all labelled frames of this site; it "
+                   "does not work for other cameras without retraining (docs/FUTURE_GUIDE.md).")
+        up = st.file_uploader("Camera frame (jpg/png)", type=["jpg", "jpeg", "png"], key="real_try")
+        mp = ROOT / "models" / "in_overland" / "reader.joblib"
+        if up is None:
+            pass
+        elif not mp.exists():
+            st.warning("Train the model first: `python scripts/train_reader.py`.")
+        else:
+            import cv2
+            import numpy as np
+
+            from floodcam.real.infer import PlateModel
+
+            @st.cache_resource
+            def _model():
+                return PlateModel.load(str(mp))
+
+            img = cv2.imdecode(np.frombuffer(up.getvalue(), np.uint8), cv2.IMREAD_COLOR)
+            if img is None:
+                st.error("Could not decode the image.")
+            else:
+                out = _model().read(img)
+                a, b = st.columns([3, 1])
+                a.image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), use_container_width=True)
+                if out.strip is not None:
+                    b.image(cv2.cvtColor(cv2.resize(out.strip, (96, 480)), cv2.COLOR_BGR2RGB),
+                            caption="rectified plate")
+                if out.status == "ok":
+                    name, col = _sev(out.depth_cm)
+                    st.metric("Estimated depth", f"{out.depth_cm:.1f} cm")
+                    st.markdown(f"Severity: <span style='background:{col};padding:2px 10px;"
+                                f"border-radius:4px;font-weight:600'>{name}</span>", unsafe_allow_html=True)
+                    st.caption(f"model confidence margin {out.margin:.2f}; values below about 4 cm are the "
+                               "plate bottom and read as 0")
+                elif out.status == "rejected_quality":
+                    st.warning(f"Rejected by the image-quality gate (Laplacian variance {out.lapvar:.0f}): "
+                               "blur, dirt on the lens or glare. No reading.")
+                else:
+                    st.warning("Could not register the frame to any reference view of this camera.")

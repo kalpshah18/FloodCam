@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import altair as alt  # noqa: E402
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
+
 from floodcam.dashboard_data import (  # noqa: E402
     alerts_up_to,
     camera_health_history,

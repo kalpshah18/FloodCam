@@ -1,5 +1,12 @@
 # CLAUDE.md
 
+> **Status update 2026-10-29 (read `docs/FUTURE_GUIDE.md` first).** The project pivoted from
+> synthetic-first development to real footage: USGS gauge cameras with official gauge labels
+> (`docs/DATA_SOURCES.md`, `data/usgs/`, `src/floodcam/real/`, `results/real/`). A production reader is
+> in `models/in_overland/`. Where this brief and the guide disagree, the guide and `docs/DECISIONS.md`
+> win. The evaluation rules below (split by session, locked test, no leakage, numbers only from
+> scripts) still apply and are implemented in the real-footage pipeline.
+
 ## Project
 ES 678 (graduate ML) course project. Student: Kalp Shah, 24110152.
 Title: Estimating Shallow Flood Depth from Fixed-Camera Video via Water Segmentation and Calibrated Geometry.

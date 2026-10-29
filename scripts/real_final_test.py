@@ -16,6 +16,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
+import numpy as np  # noqa: E402
+
 from floodcam.real.experiment import (  # noqa: E402
     fit_models,
     gate,
@@ -25,8 +27,6 @@ from floodcam.real.experiment import (  # noqa: E402
     write_run,
 )
 from floodcam.real.plate import SiteSpec  # noqa: E402
-
-import numpy as np  # noqa: E402
 
 LOG = ROOT / "results" / "real" / "final_test_log.jsonl"
 

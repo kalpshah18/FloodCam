@@ -214,7 +214,8 @@ def main() -> int:
         L.append("\nMAE by depth bin (gated, learned):\n")
         L.append("| bin cm | n | MAE cm |\n|---|---|---|")
         for k, v in s["gated"]["learned"]["depth"]["mae_by_bin_cm"].items():
-            L.append(f"| {k} | {v['n']} | {'-' if v['mae_cm'] is None else f'{v['mae_cm']:.2f}'} |")
+            mae = "-" if v["mae_cm"] is None else f"{v['mae_cm']:.2f}"
+            L.append(f"| {k} | {v['n']} | {mae} |")
         pb = s["gated"]["learned"]["by_block"]
         L.append(f"\nPer-block MAE (gated): median {pb['mae_median']:.2f}, IQR "
                  f"{pb['mae_iqr'][0]:.2f}-{pb['mae_iqr'][1]:.2f}, worst {pb['mae_worst']:.2f} cm.\n")
