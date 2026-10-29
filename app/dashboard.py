@@ -14,6 +14,7 @@ from pathlib import Path
 
 # Allow running from repo root
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent))
 
 import altair as alt  # noqa: E402
 import pandas as pd  # noqa: E402
@@ -471,6 +472,20 @@ def _banner(db_path: Path, run_id: str) -> None:
 
 def main() -> None:
     st.title("FloodCam Monitor")
+
+    mode = st.sidebar.radio(
+        "Mode", ["Upload video (live)", "Real USGS footage", "Recorded runs (replay)"], key="mode",
+    )
+    if mode == "Real USGS footage":
+        from real_view import render as render_real
+
+        render_real()
+        return
+    if mode == "Upload video (live)":
+        from upload_view import render as render_upload
+
+        render_upload()
+        return
 
     db_path, run_id, selected_cam, cursor_ts, live_mode = _sidebar()
 

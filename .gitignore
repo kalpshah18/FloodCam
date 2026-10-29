@@ -67,3 +67,9 @@ Thumbs.db
 # Logs
 *.log
 runs/
+
+# Real footage (downloaded by scripts/build_usgs_dataset.py)
+data/usgs/frames/
+data/usgs/raw/
+data/usgs/manifest*.jsonl
+data/usgs/strips/

@@ -314,3 +314,98 @@ outside this milestone's scope.
 
 **Licences:** `license_verified` is false for every dataset until a human flips it; the
 licence strings previously listed in `AI_USE.md` were written from memory and are unverified.
+
+## 2026-10-25: Upload-video live dashboard (`app/upload_view.py`, `floodcam.live`)
+
+**Decision:** The dashboard's default mode takes an uploaded video, lets the user calibrate on a
+frame, and updates depth/severity/state per sampled frame while the video is analysed. Replay of
+recorded runs remains as a second mode. Calibration for an arbitrary video is a 2-point
+`LinearCalib` (ground-contact row = 0 cm, one marked row at a known height), entered with
+sliders; the preview shows a test reading so the user can check it on a frame with known depth.
+**Alternative:** click-to-mark with a custom component (extra dependency, "ask before adding"),
+or homography (needs 4+ points; still available through `floodcam.calib.annotate`).
+
+**Decision:** Timestamps are video time (`frame_index / fps`), not wall-clock. Playback speed only
+paces the display. Persistence / trend windows default to seconds (10 s / 20 s) in this mode so
+a short clip can reach Flood and Recovering; the sidebar says to use minutes for real events.
+Rate-of-rise severity escalation is off by default here: over a 20 s window depth noise
+converts to a large cm/10 min rate. The Flood/Recovering logic remains a demonstration, not a
+validated claim (CLAUDE.md).
+
+**Decision:** A healthy frame with no water at the pole is a valid 0 cm reading
+(`reason="no_water"` -> depth 0, confidence 0.8), not an excluded sample. Without this the
+temporal filter held the last median after water receded (observed: 2.3 cm shown on a dry scene).
+`DepthEstimate` gained a defaulted `reason` field to carry the waterline reason.
+
+**Decision:** In this pipeline only black/obstructed frames gate the depth estimate. The frozen
+check (mean abs diff < threshold for k frames) is reported but does not gate: a static
+fixed-camera scene legitimately yields near-identical frames, and the default threshold (5.0)
+would flag real static footage. Uploads use threshold 0.5.
+
+**Limitation:** The waterline detector reads water on the columns flanking the pole and requires
+water at the ground-contact row; it is the project's HSV baseline geometry and has only been
+validated on synthetic video. No real-footage accuracy claim exists.
+
+## 2026-10-26: Real-footage robustness for upload mode
+
+**Decision:** Default depth reading is the "gauge" method: a narrow strip on the reference
+object itself, thresholded for change against a dry reference frame (mean of 5 frames; Lab dE
+after per-frame exposure compensation from rows above the highest mark). The waterline is the
+top of the contiguous changed run above the ground row (gaps up to 1 cm bridged).
+**Alternative:** global HSV colour threshold + reading water beside the pole. Kept as an option
+(and for the synthetic legacy tests) but a colour threshold cannot separate water from sky,
+asphalt or foliage. Reading beside the pole also does not measure depth on a real ground plane.
+**Limits:** needs a dry moment in the video; wet-looking but unchanged water (clear, still,
+no reflection) can be missed; shadows, passers-by and reflections cause false change. None of
+this is validated on real footage yet.
+
+**Decision:** Small camera shake is removed by phase correlation on edge magnitude, using only rows
+above the highest calibration mark (never underwater), accepted only if it improves a z-scored
+alignment error by >= 15%. Using the whole frame was tried first and failed: rising water was read as
+camera motion (up to 9 px drift).
+
+**Decision:** Click-to-mark uses `streamlit-image-coordinates` (small pure-Python component).
+Sliders remain as fine-tune and as the fallback if the package is missing.
+
+**Decision:** Annotated video is encoded with ffmpeg (H.264) when available, else mp4v.
+
+## 2026-10-28: Real USGS footage pipeline (supersedes synthetic-only evaluation)
+
+**Decision:** Evaluate on real fixed-camera footage with official gauge labels (USGS cameras, see
+`docs/DATA_SOURCES.md`). Synthetic data stays for unit tests and the upload-dashboard demo only.
+**Why:** no self-collected data exists; the USGS S3 bucket was the only reachable real source.
+
+**Decision:** Read depth from the staff plate with a learned per-row classifier (gradient boosting
+on colour-change, texture and context features of the rectified plate strip, labels derived from the
+gauge) and a monotone change-point decode, instead of the vertical-strip HSV/change gauge. **Alternative
+kept as baseline:** the same decode on a thresholded dry-template colour change (threshold tuned on
+training blocks). **Why:** the plate is tilted and its appearance changes by season, lighting and
+infrared; a fixed threshold fails (see results/real/SUMMARY.md). No GPU or torch is needed.
+
+**Decision:** Split by calendar-month block (an event/session). Locked test blocks 2025-04 and 2026-04
+were fixed in `scripts/make_usgs_splits.py` before any model was trained. Tuning (HSV-free: baseline
+threshold, gate, registration references) used dev blocks only. Registration reference frames are
+chosen from dev blocks using image geometry only.
+
+**Decision:** Registration = SIFT homography to the best of 13 reference views (one per dev month), with
+a causal fallback that reuses the homography of the most recent registered frame (camera pose changes
+rarely). **Limit:** a pose change during a run of failed frames is not detected.
+
+**Decision (design change after seeing dev results, disclosed):** the image-quality gate was first
+one-sided (Laplacian variance >= 0.5 x median, to catch blur). Dev-block error vs Laplacian
+variance showed lens dirt/spray frames with variance 3000+ also fail, so the gate became two-sided
+[0.55, 1.7] x training median. The locked blocks had already been evaluated once with the one-sided
+gate; the run was repeated with `--force` and both results are kept
+(`results/real/final_v1_gate_one_sided_metrics.json`, `results/real/final_test_log.jsonl`). The gate
+is chosen from dev data only, but the second locked run is therefore not a pristine single look.
+
+**Decision:** Resolution sweep isolates the readout resolution: registration is computed once at native
+resolution, then the frame is area-downsampled by f and the plate re-sampled at 1/f rows. Registering at the
+degraded resolution was tried first and collapses at f >= 8 (registered fraction 34% at f=8, 6% at f=16,
+0% at f=32), which mixes a calibration failure with the question asked. Treat the sweep as "how coarse
+can the plate readout be once the camera is calibrated".
+
+**Limits to state in the report:** one camera/site (n = number of month blocks, 13 dev + 2 locked);
+the gauge sits beside the plate; depth below the plate bottom (~4 cm) is invisible, so values < ~4 cm
+are reported as 0; infrared and night frames share the model but are a different appearance; the
+labels (gage height) are not tape measures.

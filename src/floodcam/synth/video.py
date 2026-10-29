@@ -1,0 +1,100 @@
+"""Render a synthetic demo video (rise -> plateau -> fall) for the upload dashboard.
+
+SYNTHETIC: for demos and tests only; never report results from it. The returned
+LiveSettings carry the renderer's analytic calibration marks so the demo is
+one-click in the dashboard.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+
+from floodcam.live import LiveSettings
+from floodcam.synth.demo import _NORMAL_SCENE_PARAMS
+from floodcam.synth.renderer import SceneConfig, SynthRenderer
+
+DEMO_SCENE_IDX = 2  # never the locked test scene (index 1)
+
+
+def demo_depth_profile(duration_s: float, peak_cm: float = 12.0) -> "callable":
+    """Piecewise depth(t): dry 10%, rise 35%, plateau 20%, fall 25%, dry 10%."""
+    d = duration_s
+    knots_t = [0, 0.10 * d, 0.45 * d, 0.65 * d, 0.90 * d, d]
+    knots_h = [0.0, 0.0, peak_cm, peak_cm, 0.0, 0.0]
+    return lambda t: float(np.interp(t, knots_t, knots_h))
+
+
+def render_demo_video(
+    out_path: str | Path,
+    duration_s: float = 60.0,
+    fps: float = 5.0,
+    peak_cm: float = 12.0,
+    seed: int = 42,
+    degrade: bool = False,
+    method: str = "legacy",
+) -> tuple[Path, LiveSettings, "callable"]:
+    """Write an mp4 and return (path, matching settings, true-depth function).
+
+    degrade=True adds handheld-like shake, exposure drift, blur and sensor noise so the
+    pipeline can be exercised on something closer to real footage.
+    method: "legacy" = colour mask + water beside the pole; "gauge" = change-vs-dry mask
+    read on the pole strip (the default path for real footage).
+    """
+    import cv2
+
+    h, tilt, f, dist, _ = _NORMAL_SCENE_PARAMS[DEMO_SCENE_IDX]
+    scene = SceneConfig(camera_height_cm=h, camera_tilt_deg=tilt,
+                        focal_length_px=f, pole_distance_cm=dist)
+    r = SynthRenderer(scene, seed=seed * 1000 + DEMO_SCENE_IDX)
+    depth_fn = demo_depth_profile(duration_s, peak_cm)
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    writer = cv2.VideoWriter(
+        str(out_path), cv2.VideoWriter_fourcc(*"mp4v"), fps,
+        (scene.img_width, scene.img_height),
+    )
+    if not writer.isOpened():
+        raise RuntimeError("cv2.VideoWriter could not open the output file")
+    n = int(duration_s * fps)
+    rng = np.random.default_rng(seed)
+    shift = np.zeros(2)
+    for i in range(n):
+        frame = r.render_frame(depth_cm=depth_fn(i / fps), frame_idx=i, variant="normal")
+        img = frame.image
+        if degrade:
+            img = img.copy()
+            for x0, w0, h0 in ((60, 70, 90), (190, 50, 120), (420, 90, 100), (540, 60, 140)):
+                img[: min(h0, 130), x0 : x0 + w0] = (70, 75, 90)  # static 'buildings' (stabilisation texture)
+                img[10:30, x0 + 8 : x0 + 20] = (200, 190, 120)
+            shift = np.clip(0.8 * shift + rng.normal(0, 0.9, 2), -4, 4)
+            M = np.array([[1, 0, shift[0]], [0, 1, shift[1]]], dtype=np.float32)
+            img = cv2.warpAffine(img, M, (img.shape[1], img.shape[0]), borderMode=cv2.BORDER_REPLICATE)
+            img = cv2.GaussianBlur(img, (0, 0), 1.2).astype(np.float32)
+            img = img * (1.0 + 0.1 * np.sin(2 * np.pi * i / (fps * 40))) + rng.normal(0, 3.0, img.shape)
+            img = np.clip(img, 0, 255).astype(np.uint8)
+        writer.write(cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
+    writer.release()
+
+    v_g, _ = r.project_height(0.0)
+    v_top, _ = r.project_height(scene.pole_height_cm)
+    settings = LiveSettings(
+        pole_x_px=int(scene.img_width * scene.pole_x_frac),
+        ground_row=float(v_g),
+        mark_row=float(v_top),
+        mark_height_cm=scene.pole_height_cm,
+        pole_width_px=scene.pole_width_px,
+        hsv_lower=[90, 30, 30],
+        hsv_upper=[120, 255, 255],
+        morph_open=0 if method == "legacy" else 3,
+        morph_close=0 if method == "legacy" else 7,
+        mask_source="colour" if method == "legacy" else "change",
+        estimator="flank" if method == "legacy" else "gauge",
+        stabilise=method != "legacy",
+        sample_fps=1.0,
+        persistence_s=8.0,
+        trend_window_s=16.0,
+    )
+    return out_path, settings, depth_fn

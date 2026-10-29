@@ -16,7 +16,7 @@ from floodcam.calib.homography import HomographyCalib
 from floodcam.calib.linear import CalibError, LinearCalib
 from floodcam.calib.uncertainty import depth_uncertainty_cm
 from floodcam.config import ROI, CalibrationConfig, CameraConfig, ExperimentConfig
-from floodcam.depth.waterline import detect_waterline
+from floodcam.depth.waterline import detect_waterline, detect_waterline_gauge
 from floodcam.seg.hsv import apply_hsv_mask
 
 SIGMA_V_DEFAULT = 0.5  # assumed waterline localisation noise (px)
@@ -35,6 +35,7 @@ class DepthEstimate:
     calibration_mode: str
     cm_per_pixel_at_waterline: float
     uncertainty_cm: float
+    reason: str = "ok"  # waterline reason: ok|no_water|above_pole_top|fully_submerged|broken_mask
 
 
 def _load_calib(cfg: CalibrationConfig) -> _CalibUnion:
@@ -97,10 +98,14 @@ def estimate(
     return estimate_from_mask(mask, camera_cfg)
 
 
-def estimate_from_mask(mask: np.ndarray, camera_cfg: CameraConfig) -> DepthEstimate:
+def estimate_from_mask(
+    mask: np.ndarray, camera_cfg: CameraConfig, method: str = "flank"
+) -> DepthEstimate:
     """Estimate depth from a precomputed binary water mask (any segmentation backend).
 
     The caller is responsible for applying the ROI to the mask.
+    method: "flank" reads water beside the pole (synthetic-style band); "gauge" reads the
+    changed/wet run on the pole strip itself (recommended for real footage).
     """
     H_img, W_img = mask.shape[:2]
 
@@ -118,7 +123,10 @@ def estimate_from_mask(mask: np.ndarray, camera_cfg: CameraConfig) -> DepthEstim
 
     s_at_ground = _cm_per_pixel_at(calib, v_g, pole_x)
 
-    wl = detect_waterline(mask, v_g, v_pole_top, pole_x, pole_hw, s_at_ground)
+    if method == "gauge":
+        wl = detect_waterline_gauge(mask, v_g, v_pole_top, pole_x, pole_hw, s_at_ground)
+    else:
+        wl = detect_waterline(mask, v_g, v_pole_top, pole_x, pole_hw, s_at_ground)
 
     if not wl.valid:
         return DepthEstimate(
@@ -129,6 +137,7 @@ def estimate_from_mask(mask: np.ndarray, camera_cfg: CameraConfig) -> DepthEstim
             calibration_mode=calib_mode,
             cm_per_pixel_at_waterline=s_at_ground,
             uncertainty_cm=0.0,
+            reason=wl.reason,
         )
 
     depth_cm = max(0.0, _height_at(calib, wl.waterline_row, pole_x))

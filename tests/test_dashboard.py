@@ -336,6 +336,8 @@ def _run_app(db_path: Path):
 
     at = AppTest.from_file(str(_APP_PATH), default_timeout=60)
     at.run()
+    at.sidebar.radio(key="mode").set_value("Recorded runs (replay)")
+    at.run()
     at.sidebar.text_input[0].set_value(str(db_path))
     at.run()
     return at
