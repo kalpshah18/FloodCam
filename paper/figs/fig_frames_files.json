@@ -38,5 +38,25 @@
   "panel": "rejected: overexposed",
   "file": "IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2025-07-31T17-31-38Z.jpg",
   "caption": "gauge 12.5 cm, no reading"
+ },
+ {
+  "panel": "in_north (held out), median",
+  "file": "IN_Overland_Flow_North_of_Cr_1000_N_nr_Decatur_Staff___2026-08-11T03-40-10Z.jpg",
+  "caption": "gauge 4 cm, est. 0 cm"
+ },
+ {
+  "panel": "oh_wetland (held out), median",
+  "file": "OH_Inflow_to_wetland_near_Winn_Road_near_Defiance_STAFF___2026-09-22T07-00-05Z.jpg",
+  "caption": "gauge 30 cm, est. 0 cm"
+ },
+ {
+  "panel": "wi_mt1 (held out), median",
+  "file": "WI_MT1_STAFF___2026-08-21T07-25-24Z.jpg",
+  "caption": "gauge 8 cm, est. 6 cm"
+ },
+ {
+  "panel": "wi_mt1 (held out), worst",
+  "file": "WI_MT1_STAFF___2026-10-24T17-00-04Z.jpg",
+  "caption": "gauge 0 cm, est. 69 cm"
  }
 ]

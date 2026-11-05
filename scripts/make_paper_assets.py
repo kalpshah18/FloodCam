@@ -311,12 +311,121 @@ def multicam():
         num(f"cam{tag}Cov", 100 * l["coverage"], "{:.0f}")
         num(f"cam{tag}NLoco", l["zero_shot"]["gated"]["n"], "{:d}")
         num(f"cam{tag}Max", l["gauge_max_cm"], "{:.0f}")
+        _lp = pd.read_csv(R / "loco" / "predictions.csv")
+        _g = _lp[(_lp.site == site) & _lp.accepted]
+        _w = _g[_g.gauge_cm > 3]
+        num(f"cam{tag}WetRecall", float((_w.zero_shot_cm > 3).mean()), "{:.2f}")
+        num(f"cam{tag}WetMae", float((_w.zero_shot_cm - _w.gauge_cm).abs().mean()), "{:.1f}")
+        num(f"cam{tag}WetZero", float(_w.gauge_cm.mean()), "{:.1f}")
     h = json.loads((TR / "metrics.json").read_text())
     rows.append(f"hancock & river plate & {211 + 0:.0f}$^{{\\dagger}}$ & -- & -- & "
                 f"{h['zero_shot']['mae_cm']:.0f} / {h['baseline_always_plate_bottom_mae_cm']:.0f} & {h['calibrated']['mae_cm']:.0f} \\\\")
     tex = ("\\begin{tabular}{@{}llrrccc@{}}\n\\toprule\nCamera & Scene & max & $n$ & in-site / 0 & held-out zero-shot / 0 & held-out calib. \\\\\n\\midrule\n"
            + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n")
     (P / "tab_cams.tex").write_text(tex)
+
+
+# ----------------------------------------------------------------------------- extra figures
+def fig_pipeline(cv):
+    """One real frame through the pipeline: frame + plate quad, rectified strip, row probabilities, gate."""
+    from floodcam.real.experiment import fit_models, load_dataset
+    from floodcam.real.plate import PlateRectifier
+    from floodcam.real.reader import decode_boundary
+
+    ds = load_dataset(SITE, 1)
+    spec = SiteSpec.load(SITE)
+    d = cv.copy()
+    cand = d[(d.block == "2026-09") & d.accepted & d.gauge_cm.between(14, 22) & ~d.is_ir & (d.borrowed < 0.5)]
+    row = cand.iloc[len(cand) // 2]
+    i = int(np.where(ds.files == row.file)[0][0])
+    train = np.isin(ds.blocks, [b for b in ds.split["dev_blocks"] if b != row.block])
+    tpl, feats, reader, base = fit_models(ds, spec, train, 0)
+    pr = reader.proba(feats[i : i + 1])[0]
+    b, _ = decode_boundary(pr[None])
+    R = len(pr)
+    heights = reader.heights(R)
+    h_cm = np.clip(reader.cal_a * heights + reader.cal_b, 0, None) * 30.48
+    depth, _ = reader.predict_cm(feats[i : i + 1])
+    man = {}
+    for line in (ROOT / "data/usgs/manifest.jsonl").read_text().splitlines():
+        r = json.loads(line)
+        man[r["file"]] = r
+    img = cv2.imread(str(ROOT / man[row.file]["path"]))
+    rect = PlateRectifier(spec)
+    reg = rect.register(img)
+    quad = (np.array(spec.quad, np.float32) * [rect.ref_shape[1], rect.ref_shape[0]]).reshape(-1, 1, 2)
+    fq = cv2.perspectiveTransform(quad, np.linalg.inv(reg.H)).reshape(-1, 2)
+    fig, ax = plt.subplots(1, 4, figsize=(7.2, 1.75), gridspec_kw={"width_ratios": [1.5, 0.45, 1.0, 1.2]})
+    vis = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).copy()
+    cv2.polylines(vis, [fq.astype(np.int32)], True, (255, 220, 0), 3)
+    x0, x1 = int(fq[:, 0].min() - 150), int(fq[:, 0].max() + 150)
+    y0, y1 = int(max(0, fq[:, 1].min() - 60)), int(min(vis.shape[0], fq[:, 1].max() + 110))
+    ax[0].imshow(vis[y0:y1, max(0, x0):x1])
+    ax[0].axis("off")
+    ax[0].set_title("(a) frame + plate quad", pad=3)
+    strip = ds.strips[i][..., ::-1]
+    ax[1].imshow(strip, aspect="auto", extent=[0, 1, h_cm.min(), h_cm.max()])
+    ax[1].set(xticks=[], ylabel="height (cm)", title="(b) strip", )
+    ax[2].plot(pr, h_cm, color=C["learned"], lw=1.2)
+    ax[2].axhline(float(depth[0]), color="#d62728", lw=1.0, label=f"decoded {float(depth[0]):.1f} cm")
+    ax[2].axhline(max(row.gauge_cm, 0), color="black", ls="--", lw=1.0, label=f"gauge {max(row.gauge_cm, 0):.1f} cm")
+    ax[2].set(xlabel="P(row submerged)", title="(c) row classifier", ylim=(h_cm.min(), h_cm.max()), xlim=(0, 1))
+    ax[2].legend(frameon=False, fontsize=5.5, loc="upper right", handletextpad=0.3)
+    # (d) error vs Laplacian variance (gate)
+    dd = cv.copy()
+    dd["ae"] = (dd.learned_cm - dd.gauge_cm).abs()
+    med = float(np.median(dd.lapvar))
+    dd["rel"] = dd.lapvar / med
+    edges = [0, 0.3, 0.55, 0.8, 1.1, 1.4, 1.7, 2.2, 10]
+    labs, vals, ns = [], [], []
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        m = (dd.rel >= lo) & (dd.rel < hi)
+        if m.sum() > 5:
+            labs.append(f"{lo:g}" if hi < 10 else f">{lo:g}")
+            vals.append(dd.ae[m].mean())
+            ns.append(int(m.sum()))
+    xs = np.arange(len(vals))
+    ax[3].bar(xs, vals, color=[("#2ca02c" if 0.55 <= float(l.strip(">")) < 1.7 else "#bbbbbb") for l in labs])
+    ax[3].set_xticks(xs, labs, fontsize=6)
+    ax[3].set(xlabel="Laplacian variance / median", ylabel="MAE (cm)", title="(d) why the gate")
+    fig.tight_layout(pad=0.4)
+    fig.savefig(P / "figs" / "fig_pipeline.pdf", dpi=200)
+    plt.close(fig)
+    (P / "figs" / "fig_pipeline_file.json").write_text(json.dumps({"file": row.file, "gauge_cm": float(row.gauge_cm)}))
+
+
+def fig_cams():
+    """Held-out (camera left out of training) zero-shot examples: median-error and worst accepted frame per camera."""
+    pr = pd.read_csv(R / "loco" / "predictions.csv")
+    man = {}
+    for line in (ROOT / "data/usgs/manifest.jsonl").read_text().splitlines():
+        r = json.loads(line)
+        man[r["file"]] = r
+    fig, axes = plt.subplots(2, 3, figsize=(7.2, 2.3))
+    meta = []
+    for col, site in enumerate(("in_north", "oh_wetland", "wi_mt1")):
+        z = np.load(ROOT / "data/usgs/strips" / f"{site}_f1.npz")
+        idx = {f: k for k, f in enumerate(z["files"])}
+        d = pr[(pr.site == site) & pr.accepted].copy()
+        d["ae"] = (d.zero_shot_cm - d.gauge_cm).abs()
+        wet = d[d.gauge_cm > 3]
+        pool = wet if len(wet) > 20 else d
+        picks = [("median error", pool.sort_values("ae").iloc[len(pool) // 2]), ("worst", d.sort_values("ae").iloc[-1])]
+        for rr, (kind, row) in enumerate(picks):
+            img = cv2.imread(str(ROOT / man[row.file]["path"]))
+            img = cv2.resize(img, (360, round(360 * img.shape[0] / img.shape[1])))
+            st = cv2.resize(z["strips"][idx[row.file]], (34, img.shape[0]), interpolation=cv2.INTER_AREA)
+            tile = cv2.cvtColor(np.hstack([img, np.full((img.shape[0], 3, 3), 255, np.uint8), st]), cv2.COLOR_BGR2RGB)
+            ax = axes[rr, col]
+            ax.imshow(tile)
+            ax.axis("off")
+            ax.set_title(f"{site.replace('_', chr(92) + '_') if False else site}: {kind}\ngauge {max(row.gauge_cm, 0):.0f} cm, est. {row.zero_shot_cm:.0f} cm",
+                         fontsize=7, pad=2)
+            meta.append({"camera": site, "kind": kind, "file": row.file, "gauge_cm": float(row.gauge_cm), "est_cm": float(row.zero_shot_cm)})
+    fig.tight_layout(pad=0.3, h_pad=0.5, w_pad=0.3)
+    fig.savefig(P / "figs" / "fig_cams.pdf", dpi=200)
+    plt.close(fig)
+    (P / "figs" / "fig_cams_files.json").write_text(json.dumps(meta, indent=1))
 
 
 # ----------------------------------------------------------------------------- subgroups
@@ -348,7 +457,7 @@ def subgroup_table(cv):
 
 # ----------------------------------------------------------------------------- figures
 def fig_timeseries_scatter(cv, fin_df, hpr, res=None, g=None):
-    fig, ax = plt.subplots(1, 4, figsize=(7.2, 1.85), gridspec_kw={"width_ratios": [1.5, 1.0, 1.1, 1.1]})
+    fig, ax = plt.subplots(1, 4, figsize=(7.2, 1.6), gridspec_kw={"width_ratios": [1.5, 1.0, 1.1, 1.1]})
     s = cv[(cv.block == "2026-09") & (cv.time >= "2026-09-16") & (cv.time < "2026-09-23")].sort_values("time")
     ax[0].plot(s.time, s.gauge_cm.clip(lower=0), color=C["gauge"], lw=1.4, label="USGS gauge")
     a = s[s.accepted]
@@ -412,7 +521,7 @@ def fig_frames(cv):
            ("worst, accepted (IR)", acc[acc.is_ir].sort_values("ae").iloc[-1]),
            ("rejected: lens dirt", d[(~d.accepted) & (d.lapvar > d.lapvar.median() * 1.7)].sort_values("lapvar").iloc[-1]),
            ("rejected: overexposed", d[(~d.accepted) & (d.lapvar < d.lapvar.median() * 0.55) & (~d.is_ir)].sort_values("lapvar").iloc[0])]
-    fig, axes = plt.subplots(2, 4, figsize=(7.2, 1.75))
+    fig, axes = plt.subplots(3, 4, figsize=(7.2, 2.95))
     meta = []
     items = []
     for cap, row in ok + bad:
@@ -434,10 +543,24 @@ def fig_frames(cv):
     htile = cv2.cvtColor(np.hstack([crop, np.full((300, 3, 3), 255, np.uint8), hs]), cv2.COLOR_BGR2RGB)
     items.insert(0, ("second camera (Hancock)", htile, f"gauge {hrow.gauge_ft * 30.48:.0f} cm, est. {hrow.calibrated_ft * 30.48:.0f} cm", hrow.file))
     items = items[:8]
+    # row 3: held-out cameras (zero-shot): median-error frame of three cameras + the worst wi_mt1 frame
+    lp = pd.read_csv(R / "loco" / "predictions.csv")
+    for site, kind in (("in_north", "median"), ("oh_wetland", "median"), ("wi_mt1", "median"), ("wi_mt1", "worst")):
+        zz = np.load(ROOT / "data/usgs/strips" / f"{site}_f1.npz")
+        zi = {f: k for k, f in enumerate(zz["files"])}
+        dd = lp[(lp.site == site) & lp.accepted].copy()
+        dd["ae"] = (dd.zero_shot_cm - dd.gauge_cm).abs()
+        pool = dd[dd.gauge_cm > 3] if (dd.gauge_cm > 3).sum() > 20 else dd
+        r_ = pool.sort_values("ae").iloc[len(pool) // 2] if kind == "median" else dd.sort_values("ae").iloc[-1]
+        im_ = cv2.imread(str(ROOT / man[r_.file]["path"]))
+        im_ = cv2.resize(im_, (300, round(300 * im_.shape[0] / im_.shape[1])))
+        st_ = cv2.resize(zz["strips"][zi[r_.file]], (28, im_.shape[0]), interpolation=cv2.INTER_AREA)
+        tl = cv2.cvtColor(np.hstack([im_, np.full((im_.shape[0], 3, 3), 255, np.uint8), st_]), cv2.COLOR_BGR2RGB)
+        items.append((f"{site} (held out), {kind}", tl, f"gauge {max(r_.gauge_cm, 0):.0f} cm, est. {r_.zero_shot_cm:.0f} cm", r_.file))
     for ax, (cap, tile, sub, fname) in zip(axes.ravel(), items):
         ax.imshow(tile)
         ax.axis("off")
-        ax.set_title(f"{cap}\n{sub}", fontsize=8, pad=2)
+        ax.set_title(f"{cap}\n{sub}", fontsize=7, pad=2)
         meta.append({"panel": cap, "file": fname, "caption": sub})
     fig.tight_layout(pad=0.3, h_pad=0.4, w_pad=0.2)
     fig.savefig(P / "figs" / "fig_frames.pdf", dpi=200)
@@ -493,6 +616,7 @@ def main() -> int:
     multicam()
     fig_timeseries_scatter(cvd, find, hpr, res, g)
     fig_frames(cvd)
+    fig_pipeline(cvd)
     # marginMaeAtCov macro (gate vs margin ranking)
     _d = cvd.copy(); _d['ae'] = (_d.learned_cm - _d.gauge_cm).abs(); _d = _d.sort_values('margin', ascending=False)
     num('marginMaeAtCov', float(_d.ae.values[: int(round(cvd.accepted.mean() * len(_d)))].mean()))
