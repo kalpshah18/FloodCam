@@ -1,0 +1,59 @@
+{
+ "source": "in_overland",
+ "target": "hancock",
+ "target_dev_blocks": [
+  "2026-04",
+  "2026-05",
+  "2026-08",
+  "2026-09",
+  "2026-10"
+ ],
+ "target_locked_blocks": [
+  "2026-07"
+ ],
+ "n_calibration_frames": 30,
+ "offset_ft": -0.7912778854370117,
+ "coverage_test": 0.9526627218934911,
+ "zero_shot": {
+  "n_on_plate": 39,
+  "mae_cm": 20.111486434936523,
+  "rmse_cm": 23.05569839477539,
+  "bias_cm": 15.447285652160645,
+  "mae_by_stage_ft": {
+   "11.0-13.0": 19.216819763183594,
+   "13.0-16.0": 13.052787780761719,
+   "16.0-19.0": 23.665489196777344
+  },
+  "n_below_plate_test": 122,
+  "below_plate_correct": 0.9754098360655737
+ },
+ "calibrated": {
+  "n_on_plate": 39,
+  "mae_cm": 12.296185493469238,
+  "rmse_cm": 19.186731338500977,
+  "bias_cm": -8.670866012573242,
+  "mae_by_stage_ft": {
+   "11.0-13.0": 7.74101448059082,
+   "13.0-16.0": 11.065361022949219,
+   "16.0-19.0": 21.7142276763916
+  },
+  "n_below_plate_test": 122,
+  "below_plate_correct": 0.9754098360655737
+ },
+ "pooled_with_target_dev": {
+  "n_on_plate": 39,
+  "mae_cm": 14.217914581298828,
+  "rmse_cm": 28.263294219970703,
+  "bias_cm": -8.863091468811035,
+  "mae_by_stage_ft": {
+   "11.0-13.0": 3.990304946899414,
+   "13.0-16.0": 6.630903244018555,
+   "16.0-19.0": 36.569881439208984
+  },
+  "n_below_plate_test": 122,
+  "below_plate_correct": 0.9754098360655737
+ },
+ "pooled_offset_ft": -0.7702341079711914,
+ "baseline_always_plate_bottom_mae_cm": 85.88178253173828,
+ "note": "classifier never trained on the target camera; locked flood block evaluated once per variant"
+}

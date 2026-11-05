@@ -417,3 +417,13 @@ requirement. Headline metrics are MAE/RMSE/bias overall and by depth range; the 
 error grows (relative to native) instead of when 3 cm detection fails; threshold F1/FAR are no longer in the
 paper (still in results/real/). **Finding added:** a causal five-reading median raises MAE (lag during fast
 rises), so headline numbers are per-frame.
+
+## 2026-11-06: Second camera as a transfer test, not an in-site model
+
+**Decision:** Hancock (river staff plate, 9-18 ft) is used only to test transfer of the camera-1 classifier.
+**Why not train in-site:** only ~60 development frames have water on its plate (stage 11-12 ft); the flood
+that exercises the plate (July, up to ~18 ft) is the locked block. **Variants:** zero-shot (nominal plate
+geometry read from printed labels), offset-calibrated (one level offset from development frames above the
+plate bottom), pooled (camera-2 development frames added to training). The pooled variant improves inside the
+stage range it saw and degrades beyond it (extrapolation), which the paper reports.
+**Limits:** one flood, 39 frames; plate quad and scale chosen by eye; no tape-measured depths.

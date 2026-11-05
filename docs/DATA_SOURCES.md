@@ -16,7 +16,7 @@ waterservices.usgs.gov, drive.google.com, dropbox.com were refused). Everything 
 | Frames | public S3 bucket `usgs-nims-images` (reachable); fetched by `scripts/build_usgs_dataset.py` |
 | Truth tables | `data/usgs/truth/*.csv`, copied from the committed result tables of `tanayvasishtha/waterline` (Apache-2.0, commit a77a74c) and `Waqar-msx9t/stagesight` (MIT, commit e9b10429), which queried NWIS (not reachable here) |
 | Site `in_overland` | USGS 411229084541101, Overland Flow near Harlan IN. Shallow sheet flow, plate 0-2 ft (0-62 cm). 2259 labelled frames, 15 monthly blocks 2023-2026, gauge 0-55 cm. **Primary dataset**: the shallow regime and the 3 cm (0.1 ft) threshold of this project |
-| Site `hancock` | USGS 01421500, East Branch Delaware River at Hancock NY. River staff plate, 9-18 ft. 1992 labelled frames downloaded; mostly below the plate, one flood. Used for the dashboard demo/qualitative checks only (the dev blocks never exceed 12 ft, so a model cannot be trained for the July flood) |
+| Site `hancock` | USGS 01421500, East Branch Delaware River at Hancock NY. River staff plate, 9-18 ft. 1992 labelled frames; mostly below the plate, one flood. Used as the second camera in the transfer experiment (`scripts/real_transfer.py`, `results/real/transfer-*`): the dev blocks never exceed 12 ft, so it cannot train an in-site model |
 | Limits | One camera per site: effective sample size is the number of monthly blocks (events/sessions), not frames. The gauge sits beside the plate (offset fitted on training blocks only). Depth below the plate bottom (~4 cm at in_overland) is not visible on the plate |
 
 ## Where else to get real data (researched 2026-10-28/29; none of these hosts were reachable from the sandbox)

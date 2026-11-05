@@ -127,7 +127,7 @@ def main_table2(cv, fin):
         first = True
         for scope in ("gated", "all_frames"):
             for meth in ("learned", "threshold_baseline", "always_no_flood"):
-                if scope == "all_frames" and meth == "always_no_flood":
+                if (scope == "all_frames" and meth != "learned") or meth == "always_no_flood":
                     continue
                 d = m[scope][meth]
                 dd = d["depth"]
@@ -244,6 +244,47 @@ def run_numbers(cv, fin, cvd, find):
     return res, g
 
 
+# ----------------------------------------------------------------------------- second camera
+TR = R / "transfer-in_overland-to-hancock"
+
+
+def hancock_numbers():
+    m = json.loads((TR / "metrics.json").read_text())
+    num("hancN", m["zero_shot"]["n_on_plate"], "{:d}")
+    num("hancCalN", m["n_calibration_frames"], "{:d}")
+    for key, tag in (("zero_shot", "Zero"), ("calibrated", "Cal"), ("pooled_with_target_dev", "Pool")):
+        num(f"hancMae{tag}", m[key]["mae_cm"], "{:.0f}")
+        num(f"hancBias{tag}", m[key]["bias_cm"], "{:+.0f}")
+        for lab, rng_ in zip("ABC", ("11.0-13.0", "13.0-16.0", "16.0-19.0")):
+            v = m[key]["mae_by_stage_ft"][rng_]
+            num(f"hancMae{tag}{lab}", v if v is not None else float("nan"), "{:.0f}")
+    num("hancTrivial", m["baseline_always_plate_bottom_mae_cm"], "{:.0f}")
+    num("hancOffsetCm", abs(m["offset_ft"]) * 30.48, "{:.0f}")
+    pr = pd.read_csv(TR / "predictions.csv", parse_dates=["time"])
+    t = pr[pr.test & pr.accepted & (pr.gauge_ft > 11.15)]
+    num("hancPeakFt", t.gauge_ft.max(), "{:.1f}")
+    num("hancLowFt", t.gauge_ft.min(), "{:.1f}")
+    num("hancRangeCm", (t.gauge_ft.max() - t.gauge_ft.min()) * 30.48, "{:.0f}")
+    num("hancFrames", int(len(pr)), "{:d}")
+    num("hancDry", int(pr.gauge_ft.lt(11.0).sum()), "{:d}")
+    return m, pr
+
+
+def fig_hancock_axis(ax, pr):
+    t = pr[pr.test].sort_values("time")
+    t = t[t.time >= "2026-07-29"]
+    cm = 30.48
+    ax.plot(t.time, t.gauge_ft * cm, color="black", lw=1.4, label="USGS gauge")
+    a = t[t.accepted]
+    ax.plot(a.time, a.zero_shot_ft * cm, ".", ms=3, color="#d62728", label="zero-shot")
+    ax.plot(a.time, a.calibrated_ft * cm, ".", ms=3, color=C["learned"], label="offset-calibrated")
+    ax.plot(a.time, a.pooled_ft * cm, ".", ms=3, color="#2ca02c", label="pooled")
+    ax.set(ylabel="stage (cm)", title="(c) Hancock flood (camera 2)")
+    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%d"))
+    ax.set_xlabel("day of Jul 2026")
+    ax.legend(frameon=False, loc="upper right", fontsize=5.5, handletextpad=0.3, labelspacing=0.2)
+
+
 # ----------------------------------------------------------------------------- subgroups
 def subgroup_table(cv):
     d = cv.copy()
@@ -272,8 +313,8 @@ def subgroup_table(cv):
 
 
 # ----------------------------------------------------------------------------- figures
-def fig_timeseries_scatter(cv, fin_df):
-    fig, ax = plt.subplots(1, 3, figsize=(7.2, 1.7), gridspec_kw={"width_ratios": [1.6, 1.05, 1.05]})
+def fig_timeseries_scatter(cv, fin_df, hpr):
+    fig, ax = plt.subplots(1, 3, figsize=(7.2, 1.6), gridspec_kw={"width_ratios": [1.6, 1.05, 1.05]})
     s = cv[(cv.block == "2026-09") & (cv.time >= "2026-09-16") & (cv.time < "2026-09-23")].sort_values("time")
     ax[0].plot(s.time, s.gauge_cm.clip(lower=0), color=C["gauge"], lw=1.4, label="USGS gauge")
     a = s[s.accepted]
@@ -286,13 +327,12 @@ def fig_timeseries_scatter(cv, fin_df):
     ax[0].set_xlabel("day of Sep 2026")
     ax[0].legend(loc="upper left", ncol=2, frameon=False, columnspacing=0.8, handletextpad=0.3)
     ax[0].set_ylim(-5, 42)
-    for k, (df, ttl) in enumerate(((cv, "(b) CV, dev blocks"), (fin_df, "(c) locked test blocks"))):
-        g = df[df.accepted]
-        for b, ss in g.groupby("block"):
-            ax[k + 1].scatter(ss.gauge_cm.clip(lower=0), ss.learned_cm, s=2.5, alpha=0.5, linewidths=0)
-        m = 62
-        ax[k + 1].plot([0, m], [0, m], "k--", lw=0.6)
-        ax[k + 1].set(xlim=(-1, m), ylim=(-1, m), xlabel="gauge (cm)", title=ttl)
+    g = cv[cv.accepted]
+    for blk, ss in g.groupby("block"):
+        ax[1].scatter(ss.gauge_cm.clip(lower=0), ss.learned_cm, s=2.5, alpha=0.5, linewidths=0)
+    ax[1].plot([0, 62], [0, 62], "k--", lw=0.6)
+    ax[1].set(xlim=(-1, 62), ylim=(-1, 62), xlabel="gauge (cm)", title="(b) CV, dev blocks")
+    fig_hancock_axis(ax[2], hpr)
     ax[1].set_ylabel("camera estimate (cm)")
     fig.tight_layout(pad=0.4)
     fig.savefig(P / "figs" / "fig_main.pdf")
@@ -325,23 +365,40 @@ def fig_frames(cv):
         sub = sub.sort_values("ae")
         return sub.iloc[len(sub) // 2]
 
-    ok = [("dry, day", median_example(acc[(~acc.is_ir) & (acc.gauge_cm <= 0.5)])),
-          ("shallow, day", median_example(acc[(~acc.is_ir) & acc.gauge_cm.between(4, 7)])),
+    ok = [("shallow, day", median_example(acc[(~acc.is_ir) & acc.gauge_cm.between(4, 7)])),
           ("deep, day", median_example(acc[(~acc.is_ir) & acc.gauge_cm.between(30, 45)])),
           ("infrared night", median_example(acc[(acc.is_ir) & acc.gauge_cm.between(12, 30)]))]
     bad = [("worst, accepted (day)", acc[~acc.is_ir].sort_values("ae").iloc[-1]),
            ("worst, accepted (IR)", acc[acc.is_ir].sort_values("ae").iloc[-1]),
            ("rejected: lens dirt", d[(~d.accepted) & (d.lapvar > d.lapvar.median() * 1.7)].sort_values("lapvar").iloc[-1]),
            ("rejected: overexposed", d[(~d.accepted) & (d.lapvar < d.lapvar.median() * 0.55) & (~d.is_ir)].sort_values("lapvar").iloc[0])]
-    fig, axes = plt.subplots(2, 4, figsize=(7.2, 1.95))
+    fig, axes = plt.subplots(2, 4, figsize=(7.2, 1.7))
     meta = []
-    for ax, (cap, row) in zip(axes.ravel(), ok + bad):
+    items = []
+    for cap, row in ok + bad:
         tile, _ = frame_tile(row, strips, idx, man, cap)
+        est = "no reading" if (not row.accepted) else f"est. {row.learned_cm:.1f} cm"
+        items.append((cap, tile, f"gauge {max(row.gauge_cm, 0):.1f} cm, {est}", row.file))
+    # second camera: median-error accepted flood frame of the locked Hancock block (calibrated variant)
+    hz = np.load(ROOT / "data/usgs/strips" / "hancock_f1.npz")
+    hidx = {f: i for i, f in enumerate(hz["files"])}
+    pr = pd.read_csv(TR / "predictions.csv")
+    pr = pr[pr.test & pr.accepted & pr.gauge_ft.between(13.5, 16.5)].copy()
+    pr["ae"] = (pr.calibrated_ft - pr.gauge_ft).abs()
+    hrow = pr.sort_values("ae").iloc[len(pr) // 2]
+    himg = cv2.imread(str(ROOT / man[hrow.file]["path"]))
+    hh, ww = himg.shape[:2]
+    crop = himg[int(0.05 * hh): int(0.75 * hh), int(0.08 * ww): int(0.92 * ww)]
+    crop = cv2.resize(crop, (round(300 * crop.shape[1] / crop.shape[0]), 300))
+    hs = cv2.resize(hz["strips"][hidx[hrow.file]], (44, 300), interpolation=cv2.INTER_AREA)
+    htile = cv2.cvtColor(np.hstack([crop, np.full((300, 3, 3), 255, np.uint8), hs]), cv2.COLOR_BGR2RGB)
+    items.insert(0, ("second camera (Hancock)", htile, f"gauge {hrow.gauge_ft * 30.48:.0f} cm, est. {hrow.calibrated_ft * 30.48:.0f} cm", hrow.file))
+    items = items[:8]
+    for ax, (cap, tile, sub, fname) in zip(axes.ravel(), items):
         ax.imshow(tile)
         ax.axis("off")
-        est = "no reading" if (not row.accepted) else f"est. {row.learned_cm:.1f} cm"
-        ax.set_title(f"{cap}\ngauge {max(row.gauge_cm, 0):.1f} cm, {est}", fontsize=8, pad=2)
-        meta.append({"panel": cap, "file": row.file, "gauge_cm": row.gauge_cm, "est_cm": row.learned_cm, "accepted": bool(row.accepted)})
+        ax.set_title(f"{cap}\n{sub}", fontsize=8, pad=2)
+        meta.append({"panel": cap, "file": fname, "caption": sub})
     fig.tight_layout(pad=0.3, h_pad=0.4, w_pad=0.2)
     fig.savefig(P / "figs" / "fig_frames.pdf", dpi=200)
     plt.close(fig)
@@ -349,7 +406,7 @@ def fig_frames(cv):
 
 
 def fig_depth(res, g, cv):
-    fig, ax = plt.subplots(1, 3, figsize=(7.2, 1.6))
+    fig, ax = plt.subplots(1, 3, figsize=(7.2, 1.45))
     fit = res["error_model_fit"]
     ax[0].plot(g.cm_per_px, g.learned_rmse, "o-", ms=3, color=C["learned"], label="measured RMSE")
     ax[0].plot(g.cm_per_px, fit["predicted_rmse"], "k--", lw=0.9, label=r"$\sqrt{(\sigma_v s)^2+\sigma_g^2}$ fit")
@@ -392,7 +449,8 @@ def main() -> int:
     smoothing(cvd, find)
     (P / "tab_main.tex").write_text(main_table2(cvm, fm))
     subgroup_table(cvd)  # sets the subgroup macros used in the text
-    fig_timeseries_scatter(cvd, find)
+    hm, hpr = hancock_numbers()
+    fig_timeseries_scatter(cvd, find, hpr)
     fig_frames(cvd)
     fig_depth(res, g, cvd)
     (P / "numbers.tex").write_text("% generated by scripts/make_paper_assets.py; do not edit\n" + "\n".join(

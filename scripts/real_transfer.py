@@ -81,24 +81,51 @@ def main() -> int:
             "below_plate_correct": float(below_plate[mb].mean()) if mb.any() else None,
         }, m
 
+    # 4) pooled variant: add the target's DEV frames (labels shifted by the calibrated offset) to the
+    #    source training rows, retrain, re-estimate the offset on dev frames, evaluate on the locked block.
+    from sklearn.ensemble import HistGradientBoostingClassifier
+
+    s_feats = row_features(src.stats, reader.template, src.is_ir, src.reg_ok, extra=src.quality)
+    Rs = s_feats.shape[1]
+    ys = reader.labels(src.gage_ft, Rs)
+    Xs, ysf = s_feats[s_train].reshape(-1, s_feats.shape[2]), ys[s_train].reshape(-1)
+    heights_t = tspec.top_ft - (np.arange(R) + 0.5) / R * (tspec.top_ft - tspec.bottom_ft)
+    yt = (heights_t[None, :] < (tgt.gage_ft[:, None] - offset)).astype(np.uint8)
+    use_t = t_dev & accepted
+    Xt, ytf = feats[use_t].reshape(-1, feats.shape[2]), yt[use_t].reshape(-1)
+    rng = np.random.default_rng(a.seed)
+    sel_s = rng.choice(len(ysf), min(len(ysf), 250_000), replace=False)
+    sel_t = rng.choice(len(ytf), min(len(ytf), 60_000), replace=False)
+    pooled = HistGradientBoostingClassifier(random_state=a.seed, max_iter=120, max_depth=6, learning_rate=0.1).fit(
+        np.vstack([Xs[sel_s], Xt[sel_t]]), np.concatenate([ysf[sel_s], ytf[sel_t]]))
+    pp = pooled.predict_proba(feats.reshape(-1, feats.shape[2]))[:, 1].reshape(len(feats), -1)
+    bp, _ = decode_boundary(pp)
+    level_pool = tspec.top_ft - (bp / R) * (tspec.top_ft - tspec.bottom_ft)
+    below_pool = bp >= R - 1
+    cal_p = t_dev & (tgt.gage_ft > tspec.bottom_ft + 0.15) & ~below_pool & accepted
+    off_p = float(np.median(tgt.gage_ft[cal_p] - level_pool[cal_p])) if cal_p.sum() >= 5 else 0.0
+
     zs, mask = report("zero_shot", level_ft)
     cl, _ = report("calibrated", level_ft + offset)
+    po, _ = report("pooled", level_pool + off_p)
     trivial = float(np.abs((tspec.bottom_ft - tgt.gage_ft[mask]) * FT).mean())   # always "at the plate bottom"
     out = {"source": a.source, "target": a.target, "target_dev_blocks": tgt.split["dev_blocks"],
            "target_locked_blocks": tgt.split["locked_test_blocks"],
            "n_calibration_frames": int(cal.sum()), "offset_ft": offset, "coverage_test": float(accepted[t_test].mean()),
-           "zero_shot": zs, "calibrated": cl, "baseline_always_plate_bottom_mae_cm": trivial,
+           "zero_shot": zs, "calibrated": cl, "pooled_with_target_dev": po, "pooled_offset_ft": off_p, "baseline_always_plate_bottom_mae_cm": trivial,
            "note": "classifier never trained on the target camera; locked flood block evaluated once per variant"}
     d = ROOT / "results" / "real" / f"transfer-{a.source}-to-{a.target}"
     d.mkdir(parents=True, exist_ok=True)
     (d / "metrics.json").write_text(json.dumps(out, indent=1))
     pd.DataFrame({"file": tgt.files, "time": tgt.times, "block": tgt.blocks, "gauge_ft": tgt.gage_ft,
-                  "zero_shot_ft": level_ft, "calibrated_ft": level_ft + offset, "below_plate": below_plate,
+                  "zero_shot_ft": level_ft, "calibrated_ft": level_ft + offset, "pooled_ft": level_pool + off_p, "below_plate": below_plate,
                   "accepted": accepted, "margin": margin, "is_ir": tgt.is_ir, "test": t_test}
                  ).to_csv(d / "predictions.csv", index=False)
     print(json.dumps({k: out[k] for k in ("n_calibration_frames", "offset_ft", "coverage_test", "baseline_always_plate_bottom_mae_cm")}))
     print("zero-shot:", {k: zs[k] for k in ("n_on_plate", "mae_cm", "rmse_cm", "bias_cm")})
     print("calibrated:", {k: cl[k] for k in ("n_on_plate", "mae_cm", "rmse_cm", "bias_cm")})
+    print("pooled:", {k: po[k] for k in ("n_on_plate", "mae_cm", "rmse_cm", "bias_cm")}, "offset", off_p)
+    print("by stage (zero-shot / calibrated / pooled):", zs["mae_by_stage_ft"], cl["mae_by_stage_ft"], po["mae_by_stage_ft"])
     return 0
 
 

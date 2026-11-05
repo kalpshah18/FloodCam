@@ -1,58 +1,42 @@
 [
  {
-  "panel": "dry, day",
-  "file": "IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-08-11T22-05-22Z.jpg",
-  "gauge_cm": 0.0,
-  "est_cm": 0.0,
-  "accepted": true
+  "panel": "second camera (Hancock)",
+  "file": "NY_East_Branch_Delaware_River_at_Hancock_Staff___2026-07-29T21-00-15Z.jpg",
+  "caption": "gauge 493 cm, est. 484 cm"
  },
  {
   "panel": "shallow, day",
   "file": "IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2024-01-24T13-00-07Z.jpg",
-  "gauge_cm": 4.572,
-  "est_cm": 5.896389,
-  "accepted": true
+  "caption": "gauge 4.6 cm, est. 5.9 cm"
  },
  {
   "panel": "deep, day",
   "file": "IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-20T15-40-21Z.jpg",
-  "gauge_cm": 33.2232,
-  "est_cm": 33.900967,
-  "accepted": true
+  "caption": "gauge 33.2 cm, est. 33.9 cm"
  },
  {
   "panel": "infrared night",
   "file": "IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2024-03-15T02-15-21Z.jpg",
-  "gauge_cm": 13.1064005,
-  "est_cm": 14.373457,
-  "accepted": true
+  "caption": "gauge 13.1 cm, est. 14.4 cm"
  },
  {
   "panel": "worst, accepted (day)",
   "file": "IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-25T13-00-27Z.jpg",
-  "gauge_cm": 0.0,
-  "est_cm": 32.49561,
-  "accepted": true
+  "caption": "gauge 0.0 cm, est. 32.5 cm"
  },
  {
   "panel": "worst, accepted (IR)",
   "file": "IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2024-01-25T05-50-01Z.jpg",
-  "gauge_cm": 18.5928,
-  "est_cm": 46.285904,
-  "accepted": true
+  "caption": "gauge 18.6 cm, est. 46.3 cm"
  },
  {
   "panel": "rejected: lens dirt",
   "file": "IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2026-09-26T16-58-19Z.jpg",
-  "gauge_cm": 0.30479997,
-  "est_cm": 0.0,
-  "accepted": false
+  "caption": "gauge 0.3 cm, no reading"
  },
  {
   "panel": "rejected: overexposed",
   "file": "IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF___2025-07-31T17-31-38Z.jpg",
-  "gauge_cm": 12.496799,
-  "est_cm": 13.713618,
-  "accepted": false
+  "caption": "gauge 12.5 cm, no reading"
  }
 ]
