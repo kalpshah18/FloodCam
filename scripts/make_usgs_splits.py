@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-LOCKED = {"in_overland": ["2025-04", "2026-04"]}
+LOCKED = {"in_overland": ["2025-04", "2026-04"], "hancock": ["2026-07"]}
 
 
 def main() -> int:

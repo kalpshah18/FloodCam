@@ -1,0 +1,6 @@
+name: hancock
+reference: models/hancock/ref_main.jpg
+quad: [[0.454, 0.073], [0.602, 0.073], [0.670, 0.8125], [0.583, 0.8125]]
+top_ft: 20.6
+bottom_ft: 11.0
+reg_region: [0.0, 0.0, 1.0, 0.62]
