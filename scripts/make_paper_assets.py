@@ -111,9 +111,17 @@ def main_table(cv, fin):
     return tex
 
 
+def _bin_mae(d, lo_keys):
+    """Pooled MAE over several depth bins (weighted by n); None if no frames."""
+    tot = sum(d["mae_by_bin_cm"][k]["n"] for k in lo_keys)
+    if tot == 0:
+        return None
+    return sum(d["mae_by_bin_cm"][k]["n"] * (d["mae_by_bin_cm"][k]["mae_cm"] or 0.0) for k in lo_keys) / tot
+
+
 def main_table2(cv, fin):
     head = ("\\begin{tabular}{@{}lllrcccccc@{}}\n\\toprule\nEval. & Frames & Method & $n$ & MAE [95\\% CI] & "
-            "near-3 & P & R & F1 & FAR \\\\\n\\midrule\n")
+            "RMSE & bias & dry & 0.5--10 & $>$10 \\\\\n\\midrule\n")
     body = []
     for label, m in (("CV", cv), ("Locked", fin)):
         first = True
@@ -122,14 +130,15 @@ def main_table2(cv, fin):
                 if scope == "all_frames" and meth == "always_no_flood":
                     continue
                 d = m[scope][meth]
-                dd, f = d["depth"], d["flood_3cm"]
+                dd = d["depth"]
                 lo, hi = d["mae_ci95_block_bootstrap"]
-                n3 = dd["near_3cm"]["mae_cm"]
-                p = "--" if f["precision"] != f["precision"] else f"{f['precision']:.2f}"
                 mae = f"{dd['mae_cm']:.2f}" if label == "Locked" else f"{dd['mae_cm']:.2f} [{lo:.1f}, {hi:.1f}]"
+                b_dry = _bin_mae(dd, ["0-0.5"])
+                b_sh = _bin_mae(dd, ["0.5-3", "3-10"])
+                b_dp = _bin_mae(dd, ["10-25", ">=25"])
+                f = lambda v: "--" if v is None else f"{v:.1f}"
                 body.append(f"{label if first else ''} & {scope_name[scope]} & {meth_name[meth]} & {dd['n']} & "
-                            f"{mae} & {'--' if n3 is None else f'{n3:.1f}'} & "
-                            f"{p} & {f['recall']:.2f} & {f['f1']:.2f} & {f['false_alarm_rate']:.2f} \\\\")
+                            f"{mae} & {dd['rmse_cm']:.1f} & {dd['bias_cm']:+.1f} & {f(b_dry)} & {f(b_sh)} & {f(b_dp)} \\\\")
                 first = False
         body.append("\\midrule")
     num("covDev", 100 * cv["coverage"], "{:.0f}")
@@ -137,6 +146,26 @@ def main_table2(cv, fin):
     num("dropDev", 100 * (1 - cv["coverage"]), "{:.0f}")
     num("dropLocked", 100 * (1 - fin["coverage"]), "{:.0f}")
     return head + "\n".join(body[:-1]) + "\n\\bottomrule\n\\end{tabular}\n"
+
+
+def smoothing(cv, fin):
+    """Causal median of the last five accepted readings, per contiguous session (gaps > 6 h split)."""
+    from floodcam.real.events import causal_median
+
+    for tag, d in (("Dev", cv), ("Locked", fin)):
+        raw, sm = [], []
+        for _, blk in d.groupby("block"):
+            blk = blk.sort_values("time")
+            t = (blk.time - blk.time.iloc[0]).dt.total_seconds().values / 3600
+            seg = np.concatenate([[0], np.cumsum(np.diff(t) > 6.0)])
+            for k in np.unique(seg):
+                ss = blk[seg == k]
+                f = causal_median(ss.learned_cm.values, ss.accepted.values)
+                m = ss.accepted.values & np.isfinite(f)
+                raw += list(np.abs(ss.learned_cm.values[m] - ss.gauge_cm.values[m]))
+                sm += list(np.abs(f[m] - ss.gauge_cm.values[m]))
+        num(f"maeRaw{tag}", float(np.mean(raw)))
+        num(f"maeSmooth{tag}", float(np.mean(sm)))
 
 
 # ----------------------------------------------------------------------------- numbers from runs
@@ -161,6 +190,15 @@ def run_numbers(cv, fin, cvd, find):
         num(f"recBase{tag}", B["flood_3cm"]["recall"])
         num(f"nearThree{tag}", L["depth"]["near_3cm"]["mae_cm"] or float("nan"), "{:.1f}")
         num(f"nearThreeZero{tag}", T["depth"]["near_3cm"]["mae_cm"] or float("nan"), "{:.1f}")
+        num(f"rmse{tag}Gated", L["depth"]["rmse_cm"], "{:.1f}")
+        num(f"bias{tag}Gated", L["depth"]["bias_cm"], "{:+.1f}")
+        sh = _bin_mae(L["depth"], ["0.5-3", "3-10"])
+        shz = _bin_mae(T["depth"], ["0.5-3", "3-10"])
+        shb = _bin_mae(B["depth"], ["0.5-3", "3-10"])
+        num(f"shallow{tag}", sh if sh is not None else float("nan"), "{:.1f}")
+        num(f"shallowZero{tag}", shz if shz is not None else float("nan"), "{:.1f}")
+        num(f"shallowBase{tag}", shb if shb is not None else float("nan"), "{:.1f}")
+        num(f"shallowN{tag}", sum(L["depth"]["mae_by_bin_cm"][k]["n"] for k in ("0.5-3", "3-10")), "{:d}")
         pb = L["by_block"]
         num(f"blockMedian{tag}", pb["mae_median"])
         num(f"blockWorst{tag}", pb["mae_worst"])
@@ -186,6 +224,14 @@ def run_numbers(cv, fin, cvd, find):
     num("sNative", g.cm_per_px.iloc[0], "{:.2f}")
     num("sigmaV", res["error_model_fit"]["sigma_v_px"])
     num("sigmaFloor", res["error_model_fit"]["sigma_floor_cm"], "{:.1f}")
+    labels = "ABCDEFG"
+    for lab, (_, r) in zip(labels, g.iterrows()):
+        num(f"resMae{lab}", r.learned_mae)
+        num(f"resRmse{lab}", r.learned_rmse)
+        num(f"resS{lab}", r.cm_per_px, "{:.2f}" if r.cm_per_px < 1 else "{:.1f}")
+        num(f"resBase{lab}", r.baseline_mae)
+    dbl = g[g.learned_mae >= 2 * g.learned_mae.iloc[0]]
+    num("sDouble", dbl.cm_per_px.min() if len(dbl) else float("nan"), "{:.1f}")
     ok = g[g.learned_f1 >= 0.9]
     num("sMaxOk", ok.cm_per_px.max(), "{:.1f}")
     bad = g[g.learned_f1 < 0.9]
@@ -235,7 +281,6 @@ def fig_timeseries_scatter(cv, fin_df):
     ax[0].plot(a.time, a.baseline_cm, ".", ms=2, color=C["base"], alpha=0.55, label="threshold baseline")
     r = s[~s.accepted]
     ax[0].plot(r.time, np.full(len(r), -2.5), "|", color="gray", ms=3, label="rejected")
-    ax[0].axhline(3, color="r", lw=0.6, ls="--")
     ax[0].set(ylabel="depth (cm)", title="(a) held-out month 2026-09, one event")
     ax[0].xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%d"))
     ax[0].set_xlabel("day of Sep 2026")
@@ -247,8 +292,6 @@ def fig_timeseries_scatter(cv, fin_df):
             ax[k + 1].scatter(ss.gauge_cm.clip(lower=0), ss.learned_cm, s=2.5, alpha=0.5, linewidths=0)
         m = 62
         ax[k + 1].plot([0, m], [0, m], "k--", lw=0.6)
-        ax[k + 1].axhline(3, color="r", lw=0.5)
-        ax[k + 1].axvline(3, color="r", lw=0.5)
         ax[k + 1].set(xlim=(-1, m), ylim=(-1, m), xlabel="gauge (cm)", title=ttl)
     ax[1].set_ylabel("camera estimate (cm)")
     fig.tight_layout(pad=0.4)
@@ -315,11 +358,13 @@ def fig_depth(res, g, cv):
     ax[0].set(xscale="log", xlabel="cm per pixel along plate $s$", ylabel="error (cm)", title="(a) error vs resolution")
     ax[0].legend(frameon=False, loc="upper left", ncol=2, columnspacing=0.8, handletextpad=0.3)
     ax[0].set_ylim(0, 16)
-    ax[1].plot(g.cm_per_px, g.learned_f1, "o-", ms=3, label="F1", color=C["learned"])
-    ax[1].plot(g.cm_per_px, g.learned_recall, "s-", ms=3, label="recall", color="#d62728")
-    ax[1].plot(g.cm_per_px, g.learned_precision, "^-", ms=3, label="precision", color="#2ca02c")
-    ax[1].set(xscale="log", ylim=(0.5, 1.01), xlabel="cm per pixel along plate $s$", title=r"(b) detecting depth $\geq 3$ cm")
-    ax[1].legend(frameon=False, loc="lower left", ncol=3, columnspacing=0.8, handletextpad=0.3)
+    base0 = g.learned_mae.iloc[0]
+    ax[1].plot(g.cm_per_px, g.learned_mae / base0, "o-", ms=3, color=C["learned"], label="learned MAE / native")
+    ax[1].axhline(2, color="gray", lw=0.7, ls=":")
+    ax[1].text(g.cm_per_px.iloc[0], 2.08, "2x native", fontsize=6.5, color="gray")
+    ax[1].set(xscale="log", xlabel="cm per pixel along plate $s$", ylabel="MAE relative to native",
+              title="(b) error growth with scale")
+    ax[1].legend(frameon=False, loc="upper left")
     d = cv.copy()
     d["ae"] = (d.learned_cm - d.gauge_cm).abs()
     d = d.sort_values("margin", ascending=False)
@@ -344,6 +389,7 @@ def main() -> int:
     find, fm = load_run(final_run())
     facts()
     res, g = run_numbers(cvm, fm, cvd, find)
+    smoothing(cvd, find)
     (P / "tab_main.tex").write_text(main_table2(cvm, fm))
     subgroup_table(cvd)  # sets the subgroup macros used in the text
     fig_timeseries_scatter(cvd, find)

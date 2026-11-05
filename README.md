@@ -1,6 +1,6 @@
 # FloodCam
 
-Estimating shallow flood depth (and whether it exceeds 3 cm) from fixed-camera video.
+Estimating shallow flood depth from fixed-camera video (depth is the target; thresholds such as 3 cm are examples).
 ES 678 course project, Kalp Shah (24110152).
 
 ## What is here
@@ -24,7 +24,7 @@ python scripts/build_refs.py                  # extra registration references (d
 python scripts/extract_strips.py --site in_overland --factor 1
 for f in 2 4 8 16 32 64; do python scripts/extract_strips.py --site in_overland --factor $f; done
 python scripts/real_cv.py                     # leave-one-block-out CV on dev blocks
-python scripts/real_resolution.py             # error / 3 cm detection vs cm per pixel
+python scripts/real_resolution.py             # depth error vs cm per pixel
 python scripts/real_final_test.py             # locked blocks; refuses a second run without --force
 python scripts/real_report.py                 # figures, tables, SUMMARY.md, failure audit
 python scripts/make_real_demo.py              # small bundle for the dashboard

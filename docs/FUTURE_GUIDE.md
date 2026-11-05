@@ -9,9 +9,10 @@ them and deliberately contains no metrics.
 
 ## 1. Where the project stands
 
-**Question:** can water depth near a reference object be read from a fixed camera well enough to decide
-whether a 3 cm threshold is exceeded, and how does error depend on resolution (cm/pixel) and image
-quality?
+**Question:** how accurately can water depth near a reference object be read from a fixed camera, and how
+does error depend on resolution (cm/pixel) and image quality? (The 3 cm flood threshold in the original
+brief was an arbitrary example, not a requirement: the paper treats depth as the target and reports error
+by depth range. Threshold metrics such as F1 at 3 cm remain in `results/real/` as secondary output.)
 
 **What was done**
 

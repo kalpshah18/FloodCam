@@ -409,3 +409,11 @@ can the plate readout be once the camera is calibrated".
 the gauge sits beside the plate; depth below the plate bottom (~4 cm) is invisible, so values < ~4 cm
 are reported as 0; infrared and night frames share the model but are a different appearance; the
 labels (gage height) are not tape measures.
+
+## 2026-11-05: Paper reframed around depth error, not a 3 cm threshold
+
+**Decision:** The paper's target is depth h (cm); the 3 cm threshold was an example from the brief, not a
+requirement. Headline metrics are MAE/RMSE/bias overall and by depth range; the resolution study asks when
+error grows (relative to native) instead of when 3 cm detection fails; threshold F1/FAR are no longer in the
+paper (still in results/real/). **Finding added:** a causal five-reading median raises MAE (lag during fast
+rises), so headline numbers are per-frame.
