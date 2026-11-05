@@ -84,3 +84,4 @@ paper/*.blg
 paper/*.fls
 paper/*.fdb_latexmk
 paper/*.toc
+paper/figs/*.png
