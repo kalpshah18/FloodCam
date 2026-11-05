@@ -28,6 +28,10 @@ BUCKET = "https://usgs-nims-images.s3.amazonaws.com/overlay"
 CAMERAS = {
     "in_overland": "IN_Overland_Flow_East_of_Bull_Rapids_Road_near_Harlan_STAFF",
     "hancock": "NY_East_Branch_Delaware_River_at_Hancock_Staff",
+    "in_north": "IN_Overland_Flow_North_of_Cr_1000_N_nr_Decatur_Staff",
+    "oh_wetland": "OH_Inflow_to_wetland_near_Winn_Road_near_Defiance_STAFF",
+    "wi_mt1": "WI_MT1_STAFF",
+    "ny_owasco": "NY_Owasco_Outlet_at_Genesee_St_Auburn_Staff",
 }
 FT_TO_CM = 30.48
 
@@ -98,8 +102,11 @@ def main() -> int:
                 if done % 200 == 0:
                     print(f"{site}: {done}/{len(jobs)} ({len(records)} ok)", flush=True)
         print(f"{site}: {sum(r['site'] == site for r in records)}/{len(jobs)} frames")
-    records.sort(key=lambda r: (r["site"], r["time"]))
     man = ROOT / "data" / "usgs" / "manifest.jsonl"
+    if man.exists():  # keep the other sites' rows; only the requested sites are replaced
+        keep = [json.loads(line) for line in man.read_text().splitlines() if line.strip()]
+        records = [r for r in keep if r["site"] not in a.sites] + records
+    records.sort(key=lambda r: (r["site"], r["time"]))
     man.write_text("\n".join(json.dumps(r) for r in records) + "\n")
     print(f"wrote {man} ({len(records)} rows)")
     return 0

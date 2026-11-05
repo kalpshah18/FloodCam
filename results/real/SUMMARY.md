@@ -76,20 +76,20 @@ Error-model fit RMSE^2 = (sigma_v*s)^2 + floor^2: sigma_v = 0.55 px, floor = 3.0
 ## Event level (causal median filter, hysteresis 3.5/2.5 cm)
 
 ```
-        run   block  span_days  gt_episodes  detected  false_episodes  median_onset_delay_h  false_per_day
-     cv_dev 2023-02      19.24            3         3               0               -316.67           0.00
-     cv_dev 2023-03      22.41            2         2               0               -233.32           0.00
-     cv_dev 2024-01       2.45            1         1               0                 -1.17           0.00
-     cv_dev 2024-03       0.81            1         1               0                  0.57           0.00
-     cv_dev 2024-04      27.85            3         3               0               -217.83           0.00
-     cv_dev 2024-12       0.45            1         1               0                  1.08           0.00
-     cv_dev 2025-01       0.36            1         1               0                  0.34           0.00
-     cv_dev 2025-06       1.13            1         1               0                  0.67           0.00
-     cv_dev 2025-07       1.12            1         1               0                  1.67           0.00
-     cv_dev 2026-03       0.12            1         0               0                   NaN           0.00
-     cv_dev 2026-07      16.83            0         0               1                   NaN           0.06
-     cv_dev 2026-08      14.92            1         1               0                  0.66           0.00
-     cv_dev 2026-09      29.80            3         3               0                  0.67           0.00
-locked_test 2025-04       3.59            2         2               0                -32.55           0.00
-locked_test 2026-04      18.01            4         4               0               -177.00           0.00
+        run   block  sessions  observed_days  gt_episodes  detected  false_episodes  median_onset_delay_h  false_per_day
+     cv_dev 2023-02         3           3.18            3         3               0                  0.67           0.00
+     cv_dev 2023-03         3           2.81            3         3               0                  0.33           0.00
+     cv_dev 2024-01         1           2.45            1         1               0                 -1.17           0.00
+     cv_dev 2024-03         1           0.81            1         1               0                  0.57           0.00
+     cv_dev 2024-04         3           4.73            3         3               0                  1.85           0.00
+     cv_dev 2024-12         1           0.45            1         1               0                  1.08           0.00
+     cv_dev 2025-01         1           0.36            1         1               0                  0.34           0.00
+     cv_dev 2025-06         1           1.13            1         1               0                  0.67           0.00
+     cv_dev 2025-07         2           0.77            2         2               0                  2.25           0.00
+     cv_dev 2026-03         1           0.12            1         0               0                   NaN           0.00
+     cv_dev 2026-07         1          16.83            0         0               1                   NaN           0.06
+     cv_dev 2026-08         1          14.92            1         1               0                  0.66           0.00
+     cv_dev 2026-09         2          29.51            3         3               0                  0.67           0.00
+locked_test 2025-04         2           2.39            2         2               0                  1.62           0.00
+locked_test 2026-04         4           3.55            4         4               0                  0.33           0.00
 ```

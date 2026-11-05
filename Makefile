@@ -4,7 +4,7 @@
 PYTHON := python
 PYTEST := python -m pytest
 
-.PHONY: upload-demo setup test test-fast synth-demo calib-headless baseline temporal-demo run-demo run-demo-multi train-seg train-seg-smoke eval-seg eval dashboard lint format clean
+.PHONY: paper upload-demo setup test test-fast synth-demo calib-headless baseline temporal-demo run-demo run-demo-multi train-seg train-seg-smoke eval-seg eval dashboard lint format clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -68,3 +68,7 @@ clean:
 
 upload-demo:
 	streamlit run app/dashboard.py
+
+paper:
+	python scripts/make_paper_assets.py
+	cd paper && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex

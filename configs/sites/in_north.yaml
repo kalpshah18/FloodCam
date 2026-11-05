@@ -1,0 +1,6 @@
+name: in_north
+reference: models/in_north/ref_main.jpg
+quad: [[0.435, 0.075], [0.505, 0.075], [0.526, 0.56], [0.458, 0.56]]
+top_ft: 2.35
+bottom_ft: 0.07
+reg_region: [0, 0, 1, 0.62]

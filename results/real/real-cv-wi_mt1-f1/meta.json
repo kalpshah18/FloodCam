@@ -1,0 +1,25 @@
+{
+ "run_id": "real-cv-wi_mt1-f1",
+ "site": "wi_mt1",
+ "factor": 1,
+ "git_commit": "34c750b",
+ "manifest_sha256_16": "c8163dcab7eb5c9c",
+ "split_sha256_16": "4440cfe3fa010d16",
+ "synthetic": false,
+ "baseline_taus": {
+  "2026-07": 40,
+  "2026-08": 40,
+  "2026-09": 40,
+  "2026-10": 40,
+  "2026-11": 40
+ },
+ "protocol": "leave-one-block-out on dev blocks",
+ "seed": 0,
+ "dev_blocks": [
+  "2026-07",
+  "2026-08",
+  "2026-09",
+  "2026-10",
+  "2026-11"
+ ]
+}

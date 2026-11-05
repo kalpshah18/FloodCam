@@ -74,3 +74,14 @@ data/usgs/raw/
 data/usgs/manifest*.jsonl
 data/usgs/strips/
 results/real/preview_*
+
+# LaTeX build files
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.toc
+paper/figs/*.png

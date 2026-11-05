@@ -1,0 +1,6 @@
+name: oh_wetland
+reference: models/oh_wetland/ref_main.jpg
+quad: [[0.628, 0.125], [0.662, 0.125], [0.664, 0.56], [0.63, 0.56]]
+top_ft: 2.4
+bottom_ft: 0.07
+reg_region: [0, 0, 1, 0.55]

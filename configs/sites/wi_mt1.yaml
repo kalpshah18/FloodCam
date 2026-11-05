@@ -1,0 +1,6 @@
+name: wi_mt1
+reference: models/wi_mt1/ref_main.jpg
+quad: [[0.658, 0.035], [0.707, 0.035], [0.722, 0.88], [0.676, 0.88]]
+top_ft: 2.28
+bottom_ft: 0.09
+reg_region: [0, 0, 1, 0.7]

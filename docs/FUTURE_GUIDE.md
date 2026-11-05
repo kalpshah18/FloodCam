@@ -9,9 +9,10 @@ them and deliberately contains no metrics.
 
 ## 1. Where the project stands
 
-**Question:** can water depth near a reference object be read from a fixed camera well enough to decide
-whether a 3 cm threshold is exceeded, and how does error depend on resolution (cm/pixel) and image
-quality?
+**Question:** how accurately can water depth near a reference object be read from a fixed camera, and how
+does error depend on resolution (cm/pixel) and image quality? (The 3 cm flood threshold in the original
+brief was an arbitrary example, not a requirement: the paper treats depth as the target and reports error
+by depth range. Threshold metrics such as F1 at 3 cm remain in `results/real/` as secondary output.)
 
 **What was done**
 
@@ -156,7 +157,9 @@ the held-out numbers in `results/real/` come from models trained without the eva
 
 ## 5. Adding more data (the most valuable next step)
 
-### 5.1 More USGS cameras (needs the network allow-list change in `docs/DATA_SOURCES.md`)
+### 5.1 More USGS cameras (hosts api.waterdata.usgs.gov and waterservices.usgs.gov are now allowed; add `nwis.waterservices.usgs.gov` too for labels older than ~120 days)
+
+Done so far with `scripts/fetch_usgs_labels.py` (labels), `scripts/build_usgs_dataset.py` (frames), `configs/sites/<site>.yaml` (geometry): in_north, oh_wetland, wi_mt1. `scripts/survey_usgs_cameras.py` lists which of the 34 staff cameras have gauge height; 20 had data in the last 110 days (data/usgs/camera_survey.csv).
 
 `data/usgs/cameras.csv` lists all 1,353 cameras in the public image bucket; 34 look like staff gauges,
 including a dozen shallow-flow sites. For each new camera:
