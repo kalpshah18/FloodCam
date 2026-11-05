@@ -1,0 +1,44 @@
+[
+ {
+  "camera": "in_north",
+  "kind": "median error",
+  "file": "IN_Overland_Flow_North_of_Cr_1000_N_nr_Decatur_Staff___2026-08-11T03-40-10Z.jpg",
+  "gauge_cm": 3.6576,
+  "est_cm": 0.0
+ },
+ {
+  "camera": "in_north",
+  "kind": "worst",
+  "file": "IN_Overland_Flow_North_of_Cr_1000_N_nr_Decatur_Staff___2026-08-30T07-00-11Z.jpg",
+  "gauge_cm": 0.0,
+  "est_cm": 22.01672
+ },
+ {
+  "camera": "oh_wetland",
+  "kind": "median error",
+  "file": "OH_Inflow_to_wetland_near_Winn_Road_near_Defiance_STAFF___2026-09-22T07-00-05Z.jpg",
+  "gauge_cm": 29.8704,
+  "est_cm": 0.0
+ },
+ {
+  "camera": "oh_wetland",
+  "kind": "worst",
+  "file": "OH_Inflow_to_wetland_near_Winn_Road_near_Defiance_STAFF___2026-09-21T00-00-05Z.jpg",
+  "gauge_cm": 41.7576,
+  "est_cm": 0.0
+ },
+ {
+  "camera": "wi_mt1",
+  "kind": "median error",
+  "file": "WI_MT1_STAFF___2026-08-21T07-25-24Z.jpg",
+  "gauge_cm": 7.9247994,
+  "est_cm": 5.7099204
+ },
+ {
+  "camera": "wi_mt1",
+  "kind": "worst",
+  "file": "WI_MT1_STAFF___2026-10-24T17-00-04Z.jpg",
+  "gauge_cm": 0.0,
+  "est_cm": 69.4944
+ }
+]
