@@ -1,0 +1,17 @@
+\begin{tabular}{@{}lllrcccccc@{}}
+\toprule
+Eval. & Frames & Method & $n$ & MAE [95\% CI] & near-3 & P & R & F1 & FAR \\
+\midrule
+CV & gated & learned reader & 1319 & 1.13 [0.7, 1.7] & 4.8 & 0.97 & 0.96 & 0.97 & 0.04 \\
+ & gated & threshold baseline & 1319 & 6.97 [6.0, 8.4] & 10.4 & 0.73 & 0.74 & 0.73 & 0.35 \\
+ & gated & always 0 cm & 1319 & 8.80 [5.0, 14.8] & 3.5 & -- & 0.00 & 0.00 & 0.00 \\
+ & all & learned reader & 1976 & 3.38 [2.1, 4.5] & 5.9 & 0.93 & 0.93 & 0.93 & 0.11 \\
+ & all & threshold baseline & 1976 & 7.94 [7.4, 8.7] & 10.7 & 0.74 & 0.82 & 0.78 & 0.44 \\
+\midrule
+Locked & gated & learned reader & 233 & 0.79 & 2.4 & 1.00 & 0.99 & 0.99 & 0.00 \\
+ & gated & threshold baseline & 233 & 11.52 & 6.7 & 0.97 & 0.57 & 0.72 & 0.57 \\
+ & gated & always 0 cm & 233 & 18.90 & 3.7 & -- & 0.00 & 0.00 & 0.00 \\
+ & all & learned reader & 283 & 3.11 & 2.4 & 0.99 & 0.95 & 0.97 & 0.22 \\
+ & all & threshold baseline & 283 & 11.67 & 6.7 & 0.97 & 0.64 & 0.77 & 0.67 \\
+\bottomrule
+\end{tabular}

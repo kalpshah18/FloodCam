@@ -127,20 +127,30 @@ def resolution(path):
     return j
 
 
-def event_level(d, run_name):
+def event_level(d, run_name, gap_h=6.0):
+    """Episodes per contiguous session. The archive holds sampled windows (days apart), so a block is
+    split wherever consecutive frames are more than gap_h hours apart; episodes never span a gap."""
     rows = []
     for b, s in d.groupby("block"):
         s = s.sort_values("time")
-        t = (s.time - s.time.iloc[0]).dt.total_seconds().values / 3600
-        valid = s.accepted.values
-        filt = causal_median(s.learned_cm.values, valid)
-        gt_ep = episodes(s.gauge_cm.values, t)
-        pr_ep = episodes(filt, t)
-        m = match_episodes(gt_ep, pr_ep)
-        days = max((t[-1] - t[0]) / 24, 1e-6)
-        rows.append({"run": run_name, "block": b, "span_days": days, **{k: v for k, v in m.items() if k != "onset_delay_h"},
-                     "median_onset_delay_h": float(np.median(m["onset_delay_h"])) if m["onset_delay_h"] else None,
-                     "false_per_day": m["false_episodes"] / days})
+        tt = (s.time - s.time.iloc[0]).dt.total_seconds().values / 3600
+        seg = np.concatenate([[0], np.cumsum(np.diff(tt) > gap_h)])
+        agg = {"gt": 0, "det": 0, "false": 0, "delays": [], "days": 0.0}
+        for k in np.unique(seg):
+            m = seg == k
+            ss, t = s[m], tt[m]
+            filt = causal_median(ss.learned_cm.values, ss.accepted.values)
+            res = match_episodes(episodes(ss.gauge_cm.values, t), episodes(filt, t))
+            agg["gt"] += res["gt_episodes"]
+            agg["det"] += res["detected"]
+            agg["false"] += res["false_episodes"]
+            agg["delays"] += res["onset_delay_h"]
+            agg["days"] += (t[-1] - t[0]) / 24
+        rows.append({"run": run_name, "block": b, "sessions": int(seg.max()) + 1,
+                     "observed_days": agg["days"], "gt_episodes": agg["gt"], "detected": agg["det"],
+                     "false_episodes": agg["false"],
+                     "median_onset_delay_h": float(np.median(agg["delays"])) if agg["delays"] else None,
+                     "false_per_day": agg["false"] / max(agg["days"], 1e-6)})
     return pd.DataFrame(rows)
 
 

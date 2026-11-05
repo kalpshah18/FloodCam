@@ -1,0 +1,126 @@
+\documentclass{article}
+\usepackage[preprint]{neurips_2026}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\hypersetup{hidelinks}
+
+% This is an ES 678 course paper, not a conference submission.
+\makeatletter
+\renewcommand{\@noticestring}{ES 678 Course Project}
+\makeatother
+
+% All numbers below are macros generated from results/ by scripts/make_paper_assets.py
+\input{numbers}
+
+\title{Reading Shallow Flood Depth from Real USGS Gauge-Camera Footage with a Learned Staff-Plate Reader}
+
+\author{%
+  Kalp Shah \\
+  Roll Number: 24110152 \\
+  ES 678 \\
+  Indian Institute of Technology Gandhinagar
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Can a fixed camera tell whether shallow water at a reference object exceeds 3\,cm, and how does this degrade with resolution and image quality? I study one real USGS camera watching a staff plate in shallow overland flow: \nFrames{} frames over \nBlocks{} months (\yearFirst--\yearLast), each labelled with the official gauge height. A learned reader registers each frame, rectifies the plate, classifies plate rows as submerged, and decodes the water level; an image-quality gate abstains on bad frames. Evaluated by leaving out whole months, the reader reaches \maeDevGated\,cm MAE on the \covDev\% of frames that pass the gate (\maeBaseDevGated\,cm for a colour-threshold baseline), \maeLockedGated\,cm on two locked months, and detects 3\,cm exceedance with F1 \foneDev. 3\,cm detection holds (F1 $\ge 0.9$) up to about \sMaxOk\,cm per pixel. The main limit is that the plate starts at \plateBottomCm\,cm, so I cannot claim to resolve depths near 3\,cm.
+\end{abstract}
+
+\section{Problem and Motivation}
+\textbf{Question.} Given one frame from a fixed camera that sees a reference object of known scale, estimate the water depth $h$ (cm) at the object and the flood indicator $\mathbb{1}[h\ge 3\,\text{cm}]$. One row is one frame at one camera and time. The prediction uses the current frame, a one-time setup (reference views, plate geometry) and, for pose recovery only, earlier frames; the gauge is never available at prediction time. Camera water-level work mostly targets rivers or deep urban water \citep{vandaele2021,liang2023}; here the threshold is 3\,cm. The data are one camera (USGS 411229084541101, overland flow near Harlan, Indiana), so claims are limited to generalisation across months of that camera (Sec.~\ref{sec:limits}).
+
+\section{Data and Preparation}
+\textbf{Source.} Frames come from the public USGS National Imagery Management System bucket \citep{nims}; labels are the USGS gage height, both public domain. NWIS was not reachable from my environment, so the gauge values come from the committed result tables of two open-source projects \citep{waterline} (not re-checked against NWIS); no camera-derived value is a label. The plate spans 0--\plateTopCm\,cm; the gauge sits beside it.
+
+\textbf{Content.} \nFrames{} frames (median spacing 21\,min) in \nBlocks{} month blocks; gauge $-0.6$ to \gaugeMax\,cm; \pctDry\% dry ($\le 0.5$\,cm), \pctOverThree\% $\ge 3$\,cm, \pctIR\% infrared night. The camera pose changes between months.
+
+\textbf{Quality checks.} SIFT registration \citep{sift} to a reference view succeeds on \pctRegistered\% of frames (the rest reuse the last good pose); a one-frame-per-month montage and the failure frames show fog, mud or droplets on the lens, glare and over-exposure; the plate bottom is at \plateBottomCm\,cm, so shallower water is invisible.
+
+\textbf{Preprocessing and leakage control.} Frames are resized to 1280\,px; the plate quad is rectified to a $360{\times}48$ strip (row $\approx 0.16$\,cm). Everything learned is fitted on training months only: the dry template (per-row median Lab colour of dry daytime frames), the affine calibration, the classifier, the baseline threshold and the gate thresholds (training Laplacian-variance quantiles). Registration reference views come from development months and use geometry, never labels.
+
+\section{Methods}
+\textbf{Baselines.} B0: always 0\,cm (``no flood''). B1: a row is wet if its colour change from the dry template exceeds $\tau$ (tuned on training months), then the same decoding and calibration as below.
+
+\textbf{Learned reader.} For frame $i$ and strip row $k$ (height $h_k$), a gradient-boosted classifier (scikit-learn \texttt{HistGradientBoosting}, \citealp{sklearn}) outputs $p_{ik}=P(\text{row submerged})$ from row colour, change from the template, texture, vertical context and frame quality. Labels are $y_{ik}=\mathbb{1}[h_k<g_i]$ ($g_i$ the gauge height): no manual annotation. Water level is the monotone change point $b^\star=\arg\max_b \sum_{k<b}\log(1-p_{ik})+\sum_{k\ge b}\log p_{ik}$, mapped to height and then to centimetres by a least-squares affine fit; levels at or below the plate bottom report 0. The log-likelihood gap to the runner-up boundary is the confidence \emph{margin}.
+
+\textbf{Quality gate.} A frame is rejected when the Laplacian variance $v$ of the whole image lies outside $[\gateLo,\gateHi]$ times the training median (low: fog, blur, obstruction; high: lens dirt, droplets, glare).
+
+\textbf{Error model.} With plate scale $s$ (cm/px) and waterline error $\sigma_v$ (px), $\mathrm{Var}(\hat h)=s^2\sigma_v^2+\sigma_g^2$; $\sigma_g$ collects gauge--plate offset and calibration error (quantisation adds $s^2/12$).
+
+\section{Evaluation Design}
+The split unit is the calendar-month block, never the frame: consecutive frames are near duplicates and lighting and pose are shared within a month. Two blocks (\lockedBlocks) were locked in \texttt{make\_usgs\_splits.py} before any model was trained; the other \nDevBlocks{} (\nDevFrames{} frames) support leave-one-block-out cross-validation (CV) and all tuning (classifier hyperparameters were left at fixed defaults). \textbf{Disclosure:} I looked at the locked blocks twice. The first gate was one-sided (low variance); dev-block errors then showed dirty-lens frames also fail, so the gate became two-sided and the locked run was repeated (\texttt{-{}-force}, both logged; the first gave \maeLockedVOneGated\,cm at \covLockedVOne\% coverage). The locked result is therefore not a pristine single look.
+
+\textbf{Metrics.} MAE (cm) overall, by depth bin and in the 1.5--4.5\,cm band around the threshold; precision (P), recall (R), F1 and false-alarm rate (FAR: frames below 3\,cm flagged) for the indicator. Uncertainty is the spread over held-out blocks (95\% intervals bootstrap whole blocks; two locked blocks give none, so locked rows show point values).
+
+\begin{table*}[t]
+\centering\small
+\caption{Held-out depth error (cm) and 3\,cm detection. Gated = frames passing the quality gate (coverage \covDev\% CV, \covLocked\% locked); near-3 = MAE for gauge 1.5--4.5\,cm; CI = block bootstrap.}
+\label{tab:main}
+\input{tab_main}
+\end{table*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figs/fig_main.pdf}
+\caption{Held-out predictions on real footage. (a) One event in 2026-09 (model never saw this month); grey ticks are rejected frames. (b,c) Camera vs.\ gauge, gated frames, coloured by month; red lines: 3\,cm.}
+\label{fig:main}
+\end{figure*}
+
+\section{Results and Error Analysis}
+\textbf{Main result.} Table~\ref{tab:main} compares the reader with both baselines. On gated frames in CV the learned reader has \maeDevGated\,cm MAE (95\% CI \ciDevLo--\ciDevHi) versus \maeBaseDevGated\,cm for the threshold baseline and \maeZeroDev\,cm for always-0\,cm; the 3\,cm indicator has F1 \foneDev{} (baseline \foneBaseDev) and FAR \farDev{} (baseline \farBaseDev). On the two locked months it reaches \maeLockedGated\,cm (baseline \maeBaseLockedGated, always-0 \maeZeroLocked) with F1 \foneLocked. Without the gate the errors are \maeDevAll\,cm (CV) and \maeLockedAll\,cm (locked): the gate buys reliability by abstaining on \dropDev\% (CV) and \dropLocked\% (locked) of frames. By depth (gated CV) MAE is \binADev, \binCDev, \binDDev{} and \binEDev\,cm for dry, 3--10, 10--25 and $>$25\,cm frames; per-month MAE has median \blockMedianDev\,cm and worst \blockWorstDev\,cm.
+
+\textbf{Near the threshold the reader does not beat the trivial baseline.} In the 1.5--4.5\,cm band the CV MAE is \nearThreeDev\,cm against \nearThreeZeroDev\,cm for always-0 (locked: \nearThreeLocked\ vs.\ \nearThreeZeroLocked; very few frames). The 3\,cm F1 is high because only \pctThreeBelowPlate\% of frames at or above 3\,cm lie below the plate bottom (\plateBottomCm\,cm), so the indicator mostly measures \emph{wet plate vs.\ dry plate}.
+
+\textbf{Events.} With a causal five-reading median and hysteresis (3.5/2.5\,cm), \detEpDev{} of \gtEpDev{} observed 3\,cm episodes in CV months were detected (\falseEpDev{} false; median onset delay \delayDev\,h) and \detEpLocked{} of \gtEpLocked{} in the locked months (none false). 
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figs/fig_frames.pdf}
+\caption{Real frames (scene crop and rectified plate). Top: median-error examples of each category. Bottom: largest accepted errors and rejected frames. Selection rules are fixed in code (file names in \texttt{paper/figs/fig\_frames\_files.json}).}
+\label{fig:frames}
+\end{figure*}
+
+\textbf{Failure audit.} Fig.~\ref{fig:frames} (bottom) and the CV subsets show where the error comes from. Infrared frames are \emph{not} worse than daylight (\maeIR\ vs.\ \maeDay\,cm). The costly cases are a borrowed pose (\maeBorrowed\ vs.\ \maeRegistered\,cm registered; the camera moved and SIFT failed) and frames outside the gate (\maeFailGate\ vs.\ \maePassGate\,cm); high-variance frames (dirt, droplets) average \maeHighLap\,cm. In the worst accepted daytime frame (gauge 0\,cm) glare washes out the plate and water streaks on the panel behind it look like wet rows; in the worst infrared frame the plate is saturated.
+
+
+\section{Graduate Depth Analysis}
+\textbf{Resolution sweep and error model.} To vary the scale $s$, registration is computed once at native resolution (camera set up once), then each frame is area-downsampled by $f\in\{1,\ldots,64\}$ and the plate re-sampled with $360/f$ rows, giving $s=\sNative f$\,cm/px. (Registering at the degraded resolution collapses for $f\ge 8$ and confounds calibration with readout.) The reader is retrained per $f$ with the same CV. Fig.~\ref{fig:depth}a--b: error and F1 are flat up to about 1\,cm/px, F1 stays $\ge 0.9$ up to \sMaxOk\,cm/px and falls to \fOneAtBad\ (MAE \maeAtBad\,cm) at \sFirstBad\,cm/px. Fitting $\mathrm{RMSE}^2=(\sigma_v s)^2+\sigma_g^2$ to the gated sweep gives $\sigma_v=\sigmaV$\,px and $\sigma_g=\sigmaFloor$\,cm. A sub-pixel $\sigma_v$ is plausible because the change point pools hundreds of rows; the $\sigma_g$ floor dominates at fine scales and reflects gauge offset and residual bad frames. Resolution is not the binding constraint here; the plate bottom is.
+
+\textbf{Risk--coverage.} Ranking by decode margin lowers MAE as coverage falls (Fig.~\ref{fig:depth}c), but at the gate's coverage it gives \marginMaeAtCov\,cm against \maePassGate\,cm for the gate: a cheap image statistic abstains better than the classifier's own confidence, plausibly because pose and lens failures are invisible to a row classifier.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figs/fig_depth.pdf}
+\caption{(a,b) Depth error and 3\,cm detection vs.\ plate scale $s$ (CV, gated); the dashed line is the fitted error model. (c) CV MAE vs.\ coverage when frames are ranked by decode margin; the star is the Laplacian gate.}
+\label{fig:depth}
+\end{figure*}
+
+\section{Limitations and Conclusion}\label{sec:limits}
+One camera means the effective sample size is the number of months, not frames, and nothing here shows transfer to other cameras. Labels are a gauge beside the plate, not tape measures. The plate begins at \plateBottomCm\,cm, so 3\,cm is not resolved: F1 reflects plate wetting, and below \plateBottomCm\,cm the reader reports 0. The locked set is two months, seen twice, and the gate was designed with dev-month error in view. Stronger claims need more labelled cameras and tape-measured depths.
+
+\textbf{Conclusion.} On real USGS footage a learned plate reader with a quality gate reads depth to about \maeDevGated\,cm (CV) on accepted frames, far better than a colour-threshold baseline, and detects plate wetting up to about \sMaxOk\,cm/px; it abstains on \dropDev\% of frames and cannot yet resolve depths around 3\,cm.
+
+\section{Reproducibility and AI-Use Disclosure}
+Code, splits, gauge tables, the trained model and all results are in \texttt{github.com/kalpshah18/FloodCam} (branch \texttt{main}); \texttt{scripts/make\_paper\_assets.py} regenerates every number, table and figure here from \texttt{results/}. Frames are public domain; no credentials or private data are used. \textbf{AI use:} Claude Code (Anthropic) helped with brainstorming, code, debugging, experiments, the dashboard and drafting this text. I checked the pipeline with unit tests, by inspecting registration strips and failure frames, and by confirming locked data never enter training; I am responsible for all results.
+
+\begin{thebibliography}{9}
+\bibitem[Vandaele et~al.(2021)]{vandaele2021} R.~Vandaele et al. River-level monitoring from camera images. \emph{HESS}, 25, 2021.
+\bibitem[Liang et~al.(2023)]{liang2023} Y.~Liang et al. V-FloodNet: urban flood video segmentation. \emph{Environ.\ Model.\ Softw.}, 2023.
+\bibitem[USGS(2026)]{nims} U.S. Geological Survey. NIMS camera images and NWIS gage height; public domain.
+\bibitem[waterline \& stagesight(2026)]{waterline} GitHub \texttt{waterline} (Apache-2.0), \texttt{stagesight} (MIT): gauge tables.
+\bibitem[Lowe(2004)]{sift} D.~Lowe. SIFT keypoints. \emph{IJCV} 60(2), 2004.
+\bibitem[Pedregosa et~al.(2011)]{sklearn} F.~Pedregosa et al. Scikit-learn. \emph{JMLR} 12, 2011.
+\end{thebibliography}
+
+\end{document}
