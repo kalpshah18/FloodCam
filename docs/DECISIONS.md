@@ -427,3 +427,14 @@ geometry read from printed labels), offset-calibrated (one level offset from dev
 plate bottom), pooled (camera-2 development frames added to training). The pooled variant improves inside the
 stage range it saw and degrades beyond it (extrapolation), which the paper reports.
 **Limits:** one flood, 39 frames; plate quad and scale chosen by eye; no tape-measured depths.
+
+## 2026-11-06: New cameras as a frozen-method test; leave-one-camera-out
+
+**Decision:** in_north, oh_wetland and wi_mt1 were downloaded after the pipeline (features, classifier settings,
+gate, decode) was frozen; no setting was changed after seeing their results, and none has a locked block (they are
+test data). **Protocol:** in-site leave-one-month-out, and leave-one-camera-out (classifier trained on the other
+cameras only; target dry template and gate thresholds from its earliest month; zero-shot or affine-calibrated on that
+month; remaining months evaluated). **Result to report as is:** held-out transfer fails on wi_mt1 (orange plate in sun
+is read as fully submerged). **Limits:** ~110 days per new camera, mostly dry; plate quads drawn by eye; labels are the
+USGS gauge. **Data access:** labels older than ~120 days need `nwis.waterservices.usgs.gov` (waterservices redirects
+there); only api.waterdata.usgs.gov and waterservices.usgs.gov were allowed, so new cameras cover Jul-Nov 2026.

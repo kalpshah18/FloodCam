@@ -65,7 +65,7 @@ threshold and would be the strongest addition to the report.
 
 ### Hosts to allow, in priority order
 
-1. `api.waterdata.usgs.gov`, `waterservices.usgs.gov` (many more labelled USGS sites)
+1. `api.waterdata.usgs.gov`, `waterservices.usgs.gov` (allowed 2026-11-06; used for in_north, oh_wetland, wi_mt1). Still needed: `nwis.waterservices.usgs.gov` (labels older than ~120 days are redirected there)
 2. `www.sciencebase.gov`, `data.usgs.gov` (ready-made USGS image + stage releases)
 3. `huggingface.co` and its CDN (V-FloodNet data, SegFormer weights)
 4. `data.mendeley.com`, `zenodo.org`, `datadryad.org`, `www.hydroshare.org`, `opara.zih.tu-dresden.de`

@@ -157,7 +157,9 @@ the held-out numbers in `results/real/` come from models trained without the eva
 
 ## 5. Adding more data (the most valuable next step)
 
-### 5.1 More USGS cameras (needs the network allow-list change in `docs/DATA_SOURCES.md`)
+### 5.1 More USGS cameras (hosts api.waterdata.usgs.gov and waterservices.usgs.gov are now allowed; add `nwis.waterservices.usgs.gov` too for labels older than ~120 days)
+
+Done so far with `scripts/fetch_usgs_labels.py` (labels), `scripts/build_usgs_dataset.py` (frames), `configs/sites/<site>.yaml` (geometry): in_north, oh_wetland, wi_mt1. `scripts/survey_usgs_cameras.py` lists which of the 34 staff cameras have gauge height; 20 had data in the last 110 days (data/usgs/camera_survey.csv).
 
 `data/usgs/cameras.csv` lists all 1,353 cameras in the public image bucket; 34 look like staff gauges,
 including a dozen shallow-flow sites. For each new camera:

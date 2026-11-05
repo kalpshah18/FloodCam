@@ -279,10 +279,44 @@ def fig_hancock_axis(ax, pr):
     ax.plot(a.time, a.zero_shot_ft * cm, ".", ms=3, color="#d62728", label="zero-shot")
     ax.plot(a.time, a.calibrated_ft * cm, ".", ms=3, color=C["learned"], label="offset-calibrated")
     ax.plot(a.time, a.pooled_ft * cm, ".", ms=3, color="#2ca02c", label="pooled")
-    ax.set(ylabel="stage (cm)", title="(c) Hancock flood (camera 2)")
+    ax.set(ylabel="stage (cm)", title="(c) Hancock flood")
     ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%d"))
     ax.set_xlabel("day of Jul 2026")
     ax.legend(frameon=False, loc="upper right", fontsize=5.5, handletextpad=0.3, labelspacing=0.2)
+
+
+# ----------------------------------------------------------------------------- multi-camera
+CAMS = [("in_overland", "cream plate"), ("in_north", "cream plate"),
+        ("oh_wetland", "white plate"), ("wi_mt1", "orange plate")]
+
+
+def multicam():
+    loco = json.loads((R / "loco" / "metrics.json").read_text())
+    rows = []
+    for site, desc in CAMS:
+        run = "real-cv-in_overland-f1" if site == "in_overland" else f"real-cv-{site}-f1"
+        ins = json.loads((R / run / "metrics.json").read_text())["gated"]
+        l = loco[site]
+        n_in = ins["learned"]["depth"]["n"]
+        rows.append(f"{site.replace('_', chr(92) + '_')} & {desc} & {l['gauge_max_cm']:.0f} & {n_in} & "
+                    f"{ins['learned']['depth']['mae_cm']:.2f} / {ins['always_no_flood']['depth']['mae_cm']:.2f} & "
+                    f"{l['zero_shot']['gated']['mae_cm']:.2f} / {l['always_0']['gated']['mae_cm']:.2f} & "
+                    f"{l['calibrated']['gated']['mae_cm']:.2f} \\\\")
+        tag = {"in_overland": "A", "in_north": "B", "oh_wetland": "C", "wi_mt1": "D"}[site]
+        num(f"cam{tag}InMae", ins["learned"]["depth"]["mae_cm"])
+        num(f"cam{tag}InZero", ins["always_no_flood"]["depth"]["mae_cm"])
+        num(f"cam{tag}LocoZero", l["zero_shot"]["gated"]["mae_cm"])
+        num(f"cam{tag}LocoCal", l["calibrated"]["gated"]["mae_cm"])
+        num(f"cam{tag}LocoTriv", l["always_0"]["gated"]["mae_cm"])
+        num(f"cam{tag}Cov", 100 * l["coverage"], "{:.0f}")
+        num(f"cam{tag}NLoco", l["zero_shot"]["gated"]["n"], "{:d}")
+        num(f"cam{tag}Max", l["gauge_max_cm"], "{:.0f}")
+    h = json.loads((TR / "metrics.json").read_text())
+    rows.append(f"hancock & river plate & {211 + 0:.0f}$^{{\\dagger}}$ & -- & -- & "
+                f"{h['zero_shot']['mae_cm']:.0f} / {h['baseline_always_plate_bottom_mae_cm']:.0f} & {h['calibrated']['mae_cm']:.0f} \\\\")
+    tex = ("\\begin{tabular}{@{}llrrccc@{}}\n\\toprule\nCamera & Scene & max & $n$ & in-site / 0 & held-out zero-shot / 0 & held-out calib. \\\\\n\\midrule\n"
+           + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n")
+    (P / "tab_cams.tex").write_text(tex)
 
 
 # ----------------------------------------------------------------------------- subgroups
@@ -313,8 +347,8 @@ def subgroup_table(cv):
 
 
 # ----------------------------------------------------------------------------- figures
-def fig_timeseries_scatter(cv, fin_df, hpr):
-    fig, ax = plt.subplots(1, 3, figsize=(7.2, 1.6), gridspec_kw={"width_ratios": [1.6, 1.05, 1.05]})
+def fig_timeseries_scatter(cv, fin_df, hpr, res=None, g=None):
+    fig, ax = plt.subplots(1, 4, figsize=(7.2, 1.85), gridspec_kw={"width_ratios": [1.5, 1.0, 1.1, 1.1]})
     s = cv[(cv.block == "2026-09") & (cv.time >= "2026-09-16") & (cv.time < "2026-09-23")].sort_values("time")
     ax[0].plot(s.time, s.gauge_cm.clip(lower=0), color=C["gauge"], lw=1.4, label="USGS gauge")
     a = s[s.accepted]
@@ -322,18 +356,24 @@ def fig_timeseries_scatter(cv, fin_df, hpr):
     ax[0].plot(a.time, a.baseline_cm, ".", ms=2, color=C["base"], alpha=0.55, label="threshold baseline")
     r = s[~s.accepted]
     ax[0].plot(r.time, np.full(len(r), -2.5), "|", color="gray", ms=3, label="rejected")
-    ax[0].set(ylabel="depth (cm)", title="(a) held-out month 2026-09, one event")
+    ax[0].set(ylabel="depth (cm)", title="(a) held-out month, one event")
     ax[0].xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%d"))
     ax[0].set_xlabel("day of Sep 2026")
-    ax[0].legend(loc="upper left", ncol=2, frameon=False, columnspacing=0.8, handletextpad=0.3)
-    ax[0].set_ylim(-5, 42)
-    g = cv[cv.accepted]
-    for blk, ss in g.groupby("block"):
+    ax[0].legend(loc="upper left", ncol=1, frameon=False, fontsize=5.5, handletextpad=0.3, labelspacing=0.2)
+    ax[0].set_ylim(-5, 52)
+    gg = cv[cv.accepted]
+    for blk, ss in gg.groupby("block"):
         ax[1].scatter(ss.gauge_cm.clip(lower=0), ss.learned_cm, s=2.5, alpha=0.5, linewidths=0)
     ax[1].plot([0, 62], [0, 62], "k--", lw=0.6)
-    ax[1].set(xlim=(-1, 62), ylim=(-1, 62), xlabel="gauge (cm)", title="(b) CV, dev blocks")
+    ax[1].set(xlim=(-1, 62), ylim=(-1, 62), xlabel="gauge (cm)", ylabel="camera (cm)", title="(b) CV, all months")
     fig_hancock_axis(ax[2], hpr)
-    ax[1].set_ylabel("camera estimate (cm)")
+    fit = res["error_model_fit"]
+    ax[3].plot(g.cm_per_px, g.learned_rmse, "o-", ms=2.5, color=C["learned"], label="RMSE")
+    ax[3].plot(g.cm_per_px, fit["predicted_rmse"], "k--", lw=0.8, label="fit")
+    ax[3].plot(g.cm_per_px, g.learned_mae, "s-", ms=2.5, color="#2ca02c", label="MAE")
+    ax[3].plot(g.cm_per_px, g.baseline_mae, "^-", ms=2.5, color=C["base"], alpha=0.7, label="baseline MAE")
+    ax[3].set(xscale="log", xlabel="cm per pixel $s$", ylabel="error (cm)", title="(d) error vs resolution")
+    ax[3].legend(frameon=False, loc="upper left", fontsize=5.5, handletextpad=0.3, labelspacing=0.2)
     fig.tight_layout(pad=0.4)
     fig.savefig(P / "figs" / "fig_main.pdf")
     plt.close(fig)
@@ -372,7 +412,7 @@ def fig_frames(cv):
            ("worst, accepted (IR)", acc[acc.is_ir].sort_values("ae").iloc[-1]),
            ("rejected: lens dirt", d[(~d.accepted) & (d.lapvar > d.lapvar.median() * 1.7)].sort_values("lapvar").iloc[-1]),
            ("rejected: overexposed", d[(~d.accepted) & (d.lapvar < d.lapvar.median() * 0.55) & (~d.is_ir)].sort_values("lapvar").iloc[0])]
-    fig, axes = plt.subplots(2, 4, figsize=(7.2, 1.7))
+    fig, axes = plt.subplots(2, 4, figsize=(7.2, 1.75))
     meta = []
     items = []
     for cap, row in ok + bad:
@@ -406,7 +446,7 @@ def fig_frames(cv):
 
 
 def fig_depth(res, g, cv):
-    fig, ax = plt.subplots(1, 3, figsize=(7.2, 1.45))
+    fig, ax = plt.subplots(1, 3, figsize=(7.2, 1.3))
     fit = res["error_model_fit"]
     ax[0].plot(g.cm_per_px, g.learned_rmse, "o-", ms=3, color=C["learned"], label="measured RMSE")
     ax[0].plot(g.cm_per_px, fit["predicted_rmse"], "k--", lw=0.9, label=r"$\sqrt{(\sigma_v s)^2+\sigma_g^2}$ fit")
@@ -450,9 +490,12 @@ def main() -> int:
     (P / "tab_main.tex").write_text(main_table2(cvm, fm))
     subgroup_table(cvd)  # sets the subgroup macros used in the text
     hm, hpr = hancock_numbers()
-    fig_timeseries_scatter(cvd, find, hpr)
+    multicam()
+    fig_timeseries_scatter(cvd, find, hpr, res, g)
     fig_frames(cvd)
-    fig_depth(res, g, cvd)
+    # marginMaeAtCov macro (gate vs margin ranking)
+    _d = cvd.copy(); _d['ae'] = (_d.learned_cm - _d.gauge_cm).abs(); _d = _d.sort_values('margin', ascending=False)
+    num('marginMaeAtCov', float(_d.ae.values[: int(round(cvd.accepted.mean() * len(_d)))].mean()))
     (P / "numbers.tex").write_text("% generated by scripts/make_paper_assets.py; do not edit\n" + "\n".join(
         f"\\newcommand{{\\{k}}}{{{v}}}" for k, v in sorted(NUM.items())) + "\n")
     print(len(NUM), "macros;", "figures in", P / "figs")
