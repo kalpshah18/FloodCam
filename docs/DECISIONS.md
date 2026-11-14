@@ -450,6 +450,13 @@ fields were deleted from `results/**/*.json`; the two former sub-bins below 10 c
 n-weighted mean, which is exact for MAE. `results/real/SUMMARY.md`, `tables/resolution.csv` and the resolution,
 scatter and time-series figures were regenerated from the stored predictions. Every number in the paper's tables
 is unchanged. `results/temporal-001` (synthetic) was re-run with the new defaults.
-**Not regenerated (raw frames not on this machine):** `paper/figs/fig_frames.pdf` and `fig_cams.pdf` pick
-held-out-camera examples among "wet" frames, now defined as gauge > 0.5 cm (`DRY_CM`); the committed PDFs still
-use the earlier pick. Re-run `scripts/make_paper_assets.py` with `data/usgs/` present to refresh them.
+**Example-frame figures redrawn:** `paper/figs/fig_frames.pdf` and `fig_cams.pdf` pick held-out-camera
+examples among "wet" frames, now defined as gauge > 0.5 cm (`DRY_CM`). They were redrawn with the
+unchanged `fig_frames`/`fig_cams` functions after downloading only the 14 picked frames from the public USGS
+bucket (via `build_usgs_dataset.process`) and extracting their strips with the site `PlateRectifier`
+(one frame, the overexposed reject, borrows the pose of the most recent earlier registered frame, the
+same causal rule as `extract_strips.py`). Rows 1-2 of `fig_frames` show the same frames as before. Row 3
+changed: in_north median 3 cm/est. 0, oh_wetland median 30 cm/est. 0 (another frame, same values),
+wi_mt1 median 2 cm/est. 0 (was 8/6), wi_mt1 worst 0 cm/est. 69 cm (another frame, same values; the
+stored LOCO predictions order tied rows differently from the run that drew the old figure). The
+file lists are in `fig_*_files.json`.
