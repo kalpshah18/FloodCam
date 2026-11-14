@@ -1,11 +1,10 @@
-"""Depth and flood-indicator metrics for the real-footage experiments."""
+"""Depth-error metrics for the real-footage experiments."""
 
 from __future__ import annotations
 
 import numpy as np
 
-BINS_CM = [(0.0, 0.5), (0.5, 3.0), (3.0, 10.0), (10.0, 25.0), (25.0, 1e9)]
-THRESH_CM = 3.0
+BINS_CM = [(0.0, 0.5), (0.5, 10.0), (10.0, 25.0), (25.0, 1e9)]
 
 
 def depth_metrics(gt: np.ndarray, pred: np.ndarray) -> dict:
@@ -20,20 +19,7 @@ def depth_metrics(gt: np.ndarray, pred: np.ndarray) -> dict:
         bins[key] = {"n": int(m.sum()),
                      "mae_cm": float(np.abs(err[m]).mean()) if m.any() else None}
     out["mae_by_bin_cm"] = bins
-    near = (gt >= 1.5) & (gt <= 4.5)
-    out["near_3cm"] = {"n": int(near.sum()),
-                       "mae_cm": float(np.abs(err[near]).mean()) if near.any() else None}
     return out
-
-
-def flood_metrics(gt: np.ndarray, pred: np.ndarray, thr: float = THRESH_CM) -> dict:
-    y, p = gt >= thr, pred >= thr
-    tp, fp, fn, tn = int((y & p).sum()), int((~y & p).sum()), int((y & ~p).sum()), int((~y & ~p).sum())
-    prec = tp / (tp + fp) if tp + fp else float("nan")
-    rec = tp / (tp + fn) if tp + fn else float("nan")
-    f1 = 2 * prec * rec / (prec + rec) if tp else (0.0 if (tp + fp + fn) else float("nan"))
-    return {"tp": tp, "fp": fp, "fn": fn, "tn": tn, "precision": prec, "recall": rec, "f1": f1,
-            "false_alarm_rate": fp / (fp + tn) if fp + tn else float("nan")}
 
 
 def block_summary(blocks: np.ndarray, gt: np.ndarray, pred: np.ndarray) -> dict:

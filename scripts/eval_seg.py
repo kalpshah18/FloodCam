@@ -70,8 +70,6 @@ def _mae_report(errs: list[tuple[float, float]]) -> dict:
         v = [e for d, e in errs if lo <= d < hi]
         per_bin[_bin_name(lo, hi)] = {"n": len(v), "mae_cm": float(np.mean(v)) if v else None}
     out["mae_per_depth_bin"] = per_bin
-    near = [e for d, e in errs if 2.0 <= d <= 5.0]
-    out["mae_near_3cm_2to5"] = {"n": len(near), "mae_cm": float(np.mean(near)) if near else None}
     return out
 
 

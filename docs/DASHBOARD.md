@@ -40,7 +40,7 @@ Then edit the **DB path** field in the sidebar.
 Live state per camera at the cursor timestamp. Displays:
 
 - **State**: Normal / Pending / Flood / Recovering — with ⚠ stale marker if the stream has a gap.
-- **Severity**: colored chip AND text label (Advisory / Warning / Severe / Critical).
+- **Severity**: colored chip AND text label (Normal / Warning / Severe / Critical).
   The color uses the Okabe-Ito colorblind-safe palette; the text label is always present.
 - **Depth** (cm), **Confidence** (0–1), **Rate of rise** (cm/10 min), **Last update** timestamp.
 
@@ -48,7 +48,7 @@ Live state per camera at the cursor timestamp. Displays:
 
 Altair chart per camera. Features:
 - Shaded state bands (Normal = green, Pending = yellow, Flood = orange, Recovering = blue).
-- Dashed horizontal lines at 2.5 cm (clear), 3.5 cm (trigger), and severity boundaries 3, 10, 25, 50 cm.
+- Dashed horizontal lines at 9.5 cm (clear), 10.5 cm (trigger), and severity boundaries 10, 25, 50 cm.
 - Main depth line (blue).
 - Cross (×) markers for invalid samples (health fault frames, `valid=0`).
 - Triangle (▲) markers for low-confidence samples (`confidence < 0.5`).
@@ -82,7 +82,7 @@ fault count for the run, and the check detail string from the health row.
 | `confidence` | Waterline detector (continuity × coverage × resolution) | < 0.5 = low-conf |
 | `rate_cm_per_10min` | OLS slope over `trend_window_minutes` | None if < 3 samples |
 | `state` | Flood state machine | See DECISIONS.md for transition rules |
-| `severity_class` | Depth + optional rate escalation | Advisory/Warning/Severe/Critical/Normal |
+| `severity_class` | Depth + optional rate escalation | Normal/Warning/Severe/Critical |
 | `stale` | Gap > `max_gap_seconds` detected | No transitions fire when stale |
 
 ---

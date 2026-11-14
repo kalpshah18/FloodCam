@@ -18,7 +18,7 @@ from floodcam.synth.renderer import SceneConfig, SynthRenderer
 DEMO_SCENE_IDX = 2  # never the locked test scene (index 1)
 
 
-def demo_depth_profile(duration_s: float, peak_cm: float = 12.0) -> "callable":
+def demo_depth_profile(duration_s: float, peak_cm: float = 20.0) -> "callable":
     """Piecewise depth(t): dry 10%, rise 35%, plateau 20%, fall 25%, dry 10%."""
     d = duration_s
     knots_t = [0, 0.10 * d, 0.45 * d, 0.65 * d, 0.90 * d, d]
@@ -30,7 +30,7 @@ def render_demo_video(
     out_path: str | Path,
     duration_s: float = 60.0,
     fps: float = 5.0,
-    peak_cm: float = 12.0,
+    peak_cm: float = 20.0,
     seed: int = 42,
     degrade: bool = False,
     method: str = "legacy",

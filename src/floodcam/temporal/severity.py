@@ -6,15 +6,14 @@ from enum import IntEnum
 from typing import Optional
 
 # Depth upper bounds for each class (cm).  depth < _UPPER_CM[i] → class i.
-_UPPER_CM: list[float] = [3.0, 10.0, 25.0, 50.0, float("inf")]
+_UPPER_CM: list[float] = [10.0, 25.0, 50.0, float("inf")]
 
 
 class SeverityClass(IntEnum):
     Normal = 0
-    Advisory = 1
-    Warning = 2
-    Severe = 3
-    Critical = 4
+    Warning = 1
+    Severe = 2
+    Critical = 3
 
 
 def depth_to_severity(depth_cm: float) -> SeverityClass:

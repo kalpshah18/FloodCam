@@ -10,9 +10,8 @@ them and deliberately contains no metrics.
 ## 1. Where the project stands
 
 **Question:** how accurately can water depth near a reference object be read from a fixed camera, and how
-does error depend on resolution (cm/pixel) and image quality? (The 3 cm flood threshold in the original
-brief was an arbitrary example, not a requirement: the paper treats depth as the target and reports error
-by depth range. Threshold metrics such as F1 at 3 cm remain in `results/real/` as secondary output.)
+does error depend on resolution (cm/pixel) and image quality, and how well does a reader transfer to other
+cameras? Depth is the target; error is reported overall and by depth range.
 
 **What was done**
 
@@ -22,7 +21,7 @@ by depth range. Threshold metrics such as F1 at 3 cm remain in `results/real/` a
 | Upload-a-video dashboard (click two marks, change-vs-dry-reference reading, shake compensation, annotated video export) | built, validated on synthetic video only | `app/upload_view.py`, `src/floodcam/live.py` |
 | **Real-footage study** on USGS gauge cameras with official gauge labels | built and evaluated on one site | `src/floodcam/real/`, `scripts/real_*.py`, `results/real/` |
 | Production model for that site | trained, committed (0.2 MB) | `models/in_overland/` |
-| Real data beyond one site, tape-measured 3 cm data | **not done** | sections 5 and 9 |
+| Tape-measured depth data | **not done** | sections 5 and 9 |
 
 **Pivot:** the original brief assumed self-collected tray data and synthetic-first development.
 No real data existed, so the reported results now come from real USGS footage instead. The synthetic
@@ -198,13 +197,13 @@ Download recipes and licences are in `docs/DATA_SOURCES.md`. Each has a differen
 small adapter per dataset that outputs the same `manifest.jsonl` rows (`site,file,path,time,gage_ft,
 gage_cm,is_ir,synthetic`), then reuse the rest of the pipeline.
 
-### 5.4 Your own recording (strongest for the 3 cm question)
+### 5.4 Your own recording (the only route to tape-measured depth)
 
-Follow `docs/RECORDING_PROTOCOL.md`: a marked pole in a tray or controlled patch, depths 0/2/3/5/10/20 cm
+Follow `docs/RECORDING_PROTOCOL.md`: a marked pole in a tray or controlled patch, depths 0/2/5/10/20/30 cm
 by tape, at least three scenes with different lighting and backgrounds, no people. Use the dashboard's
 upload mode to calibrate (click the pole base and a known mark) and add a manifest row per frame with
-the tape depth. This is the only route to tape-measured labels at the threshold; the USGS labels are a
-gauge beside the plate and the plate bottom sits near 4 cm. For these videos use the upload-mode reader
+the tape depth. This is the only route to tape-measured labels, including shallow water; the USGS labels
+are a gauge beside the plate and the plate bottom sits near 4 cm. For these videos use the upload-mode reader
 (`floodcam.live`, change-vs-dry-reference) as the starting point, and train a row classifier the same
 way as for USGS once there are enough frames per scene.
 
@@ -223,12 +222,12 @@ Ordered by expected value:
    fog, infrared and washed-out frames. Measure by registration success vs month.
 4. **Sub-4 cm range.** Depth below the plate bottom is invisible on the plate. Options: a second cue
    (the water edge on the floor/panel behind the plate, or reflections), or accept the floor and report
-   it. This directly limits the 3 cm claim.
+   it. This limits what can be said about very shallow water.
 5. **Neural model.** A small CNN or SegFormer on the strip or on the whole frame needs torch
    (`pip install torch` pulls a large CUDA build in this sandbox; use a CPU wheel index or a GPU box,
    see `docs/TRAINING_AWS.md`). Compare against the gradient-boosting reader on the same blocks.
-6. **Temporal model.** Readings are 15-60 min apart; `real/events.py` has a causal median and
-   hysteresis episodes. A Kalman/monotone-rise prior would remove isolated outliers further.
+6. **Temporal model.** Readings are 15-60 min apart; `real/events.py` has a causal median (it raises
+   MAE because levels move fast between readings). A Kalman/monotone-rise prior would remove isolated outliers further.
 7. **Night/infrared.** They share the model with a flag feature; a separate model per modality may help.
 
 ---------------------------------------------------------------------------------------------------
@@ -242,9 +241,9 @@ Ordered by expected value:
 | Accuracy vs resolution (cm/pixel) | `results/real/resolution-*/summary.json`, `figures/resolution.png`; cm/px is computed from the plate quad in `scripts/real_resolution.py`. State that registration is done at native resolution (decision in `DECISIONS.md`) |
 | Derived vs measured error | the error-model fit in the same summary (sigma_v and floor); explain that RMSE includes outliers and the floor is mostly gauge-plate offset and unreadable frames |
 | Segmentation quality vs depth error | the baseline (threshold) vs learned comparison; the original mask-erosion experiment was not repeated on real data (open item) |
-| 3 cm reliability | per-bin MAE, "near 3 cm" MAE, flood-at-3 cm precision/recall/false-alarm rate, plus the plate-bottom limit |
+| Shallow-water accuracy | per-bin MAE (dry, 0.5-10 cm), plus the plate-bottom limit |
 | Failure modes | `results/real/failures/` and `failures.csv` (blur, dirt, glare, infrared, pose change) |
-| Temporal / events | `results/real/tables/event_level.csv` (the Flood/Recovering state machine is a demonstration, not an evaluated claim) |
+| Temporal | causal-median smoothing result in the paper (the Flood/Recovering state machine is a dashboard demonstration, not an evaluated claim) |
 | Generalisation | only across months of one camera so far; state it plainly and propose 5.1/5.2 |
 
 Claims to avoid: validity on other cameras, on tape-measured depth, below 4 cm, at night with confidence,
@@ -274,7 +273,7 @@ or of the upload mode on real video.
 ## 9. Open items (checklist)
 
 - [ ] Allow USGS API hosts, add 3-5 more shallow-flow staff-gauge cameras, leave-one-site-out evaluation.
-- [ ] Record the tray dataset (protocol exists); evaluate at 0, 2, 3, 5, 10, 20 cm with tape labels.
+- [ ] Record the tray dataset (protocol exists); evaluate at 0, 2, 5, 10, 20, 30 cm with tape labels.
 - [ ] Make `real_report.py` multi-site.
 - [ ] Learned abstain / confidence instead of the Laplacian gate.
 - [ ] Better registration for infrared/fog frames; report success rate by month.

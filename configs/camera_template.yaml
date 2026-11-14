@@ -22,13 +22,12 @@ calibration:
   homography_matrix: null  # 3x3 matrix, filled by calib tool if mode=homography
 
 severity:
-  advisory_cm: 3.0
   warning_cm: 10.0
   severe_cm: 25.0
   critical_cm: 50.0
   rate_escalation_cm_per_10min: 5.0
 
 hysteresis:
-  trigger_cm: 3.5       # declare flood when depth exceeds this
-  clear_cm: 2.5         # clear flood when depth drops below this
+  trigger_cm: 10.5      # declare flood when depth exceeds this
+  clear_cm: 9.5         # clear flood when depth drops below this
   persistence_min: 5.0  # must exceed trigger for this many minutes before Flood state

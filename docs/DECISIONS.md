@@ -34,13 +34,13 @@ Each entry: decision made, alternative considered, reason.
 
 ---
 
-## 2026-10-21: Hysteresis band: trigger 3.5 cm, clear 2.5 cm, persistence 5 min
+## 2026-10-21: Hysteresis band: trigger 10.5 cm, clear 9.5 cm, persistence 5 min
 
-**Decision:** Use a 1 cm hysteresis band around the 3 cm flood threshold.
+**Decision:** The dashboard's Flood state uses a 1 cm hysteresis band around the Warning severity boundary (10 cm). Both values are per-camera config.
 
-**Alternative:** Hard threshold at exactly 3 cm.
+**Alternative:** Hard threshold at exactly 10 cm.
 
-**Reason:** Waterline localization error of ~1-2 px at typical resolutions corresponds to ~0.5-1.5 cm depth error. A dead band prevents rapid state oscillation near threshold. The 5-minute persistence requirement further filters transient detections (splash, reflections).
+**Reason:** Waterline localization error of ~1-2 px at typical resolutions corresponds to ~0.5-1.5 cm depth error. A dead band prevents rapid state oscillation near the boundary. The 5-minute persistence requirement further filters transient detections (splash, reflections).
 
 ---
 
@@ -99,7 +99,7 @@ Each entry: decision made, alternative considered, reason.
 
 **Alternative:** Always use homography; linear is never recommended.
 
-**Reason:** For a 20° tilt scene with calib marks at [0,10,20,30,40] cm, the linear model has ~0.3 cm noiseless error at depths 2–3 cm (the flood threshold zone). Homography achieves < 0.01 cm. Linear is simpler to annotate (pole-only marks), but users must understand it is approximate. The annotation CLI enforces ≥ 2 points (linear) and ≥ 4 non-collinear 2D points (homography).
+**Reason:** For a 20° tilt scene with calib marks at [0,10,20,30,40] cm, the linear model has ~0.3 cm noiseless error at depths 2–3 cm (shallow water). Homography achieves < 0.01 cm. Linear is simpler to annotate (pole-only marks), but users must understand it is approximate. The annotation CLI enforces ≥ 2 points (linear) and ≥ 4 non-collinear 2D points (homography).
 
 ---
 
@@ -129,9 +129,9 @@ because the upward contiguous scan by construction finds a fully-water segment.
 Inter-column consistency instead detects the physically important failure mode:
 different columns seeing wildly different waterline heights (reflections, partial
 occlusion, large mask holes), while clean synthetic masks give std ≈ 0 → 1.0.
-The `resolution_factor = min(1.0, 0.5 / s)` penalises coarse resolution where
-3 cm detection is unreliable (reference: 6 px per 3 cm at the minimum usable
-resolution of 0.5 cm/px).
+The `resolution_factor = min(1.0, 0.5 / s)` penalises coarse resolution, where
+waterline localisation error (in px) becomes a large depth error (reference: 0.5 cm/px
+as the coarsest scale given full confidence).
 
 ---
 
@@ -163,8 +163,8 @@ Key choices:
 
 ## 2026-10-21: Oscillation and hysteresis behavior
 
-**Finding:** `oscillation_around_threshold(center=3.0, amplitude=1.5)` swings depth [1.5, 4.5] cm.
-Since 4.5 > trigger_cm (3.5) and 1.5 < clear_cm (2.5), Normal↔Pending transitions are **correct
+**Finding:** `oscillation_around_threshold(center=10.0, amplitude=1.5)` swings depth [8.5, 11.5] cm.
+Since 11.5 > trigger_cm (10.5) and 8.5 < clear_cm (9.5), Normal↔Pending transitions are **correct
 behavior** — not chatter. The test verifies alert-safety properties: Flood never reached (60 s
 oscillation period << 5 min persistence) and no single Pending dwell approaches persistence.
 
@@ -410,12 +410,10 @@ the gauge sits beside the plate; depth below the plate bottom (~4 cm) is invisib
 are reported as 0; infrared and night frames share the model but are a different appearance; the
 labels (gage height) are not tape measures.
 
-## 2026-11-05: Paper reframed around depth error, not a 3 cm threshold
+## 2026-11-05: Paper target is depth error
 
-**Decision:** The paper's target is depth h (cm); the 3 cm threshold was an example from the brief, not a
-requirement. Headline metrics are MAE/RMSE/bias overall and by depth range; the resolution study asks when
-error grows (relative to native) instead of when 3 cm detection fails; threshold F1/FAR are no longer in the
-paper (still in results/real/). **Finding added:** a causal five-reading median raises MAE (lag during fast
+**Decision:** The paper's target is depth h (cm). Headline metrics are MAE/RMSE/bias overall and by depth
+range; the resolution study asks when error grows relative to native resolution. **Finding added:** a causal five-reading median raises MAE (lag during fast
 rises), so headline numbers are per-frame.
 
 ## 2026-11-06: Second camera as a transfer test, not an in-site model
@@ -438,3 +436,20 @@ month; remaining months evaluated). **Result to report as is:** held-out transfe
 is read as fully submerged). **Limits:** ~110 days per new camera, mostly dry; plate quads drawn by eye; labels are the
 USGS gauge. **Data access:** labels older than ~120 days need `nwis.waterservices.usgs.gov` (waterservices redirects
 there); only api.waterdata.usgs.gov and waterservices.usgs.gov were allowed, so new cameras cover Jul-Nov 2026.
+
+## 2026-11-14: Removed the shallow flood-indicator threshold from the whole project
+
+**Decision:** The project estimates flood depth from cameras; there is no fixed shallow alarm threshold. Removed
+from code, configs, results, docs and paper: the binary threshold indicator and its metrics (threshold
+precision/recall/F1/false-alarm rate, "near-threshold" MAE), the event-level episode analysis
+(`results/real/tables/event_level.csv`), and the lowest severity class. Severity is now Normal <10, Warning 10-25,
+Severe 25-50, Critical >50 cm; the dashboard's Flood state triggers at 10.5 cm and clears at 9.5 cm (per-camera
+config). Depth bins are 0-0.5 (dry), 0.5-10, 10-25, >=25 cm.
+**How stored results were changed:** no experiment was re-run (the locked test was not touched again). The removed
+fields were deleted from `results/**/*.json`; the two former sub-bins below 10 cm were merged into "0.5-10" with an
+n-weighted mean, which is exact for MAE. `results/real/SUMMARY.md`, `tables/resolution.csv` and the resolution,
+scatter and time-series figures were regenerated from the stored predictions. Every number in the paper's tables
+is unchanged. `results/temporal-001` (synthetic) was re-run with the new defaults.
+**Not regenerated (raw frames not on this machine):** `paper/figs/fig_frames.pdf` and `fig_cams.pdf` pick
+held-out-camera examples among "wet" frames, now defined as gauge > 0.5 cm (`DRY_CM`); the committed PDFs still
+use the earlier pick. Re-run `scripts/make_paper_assets.py` with `data/usgs/` present to refresh them.

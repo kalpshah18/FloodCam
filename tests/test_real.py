@@ -8,8 +8,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from floodcam.real.events import causal_median, episodes, match_episodes
-from floodcam.real.metrics import block_bootstrap_ci, depth_metrics, flood_metrics
+from floodcam.real.events import causal_median
+from floodcam.real.metrics import block_bootstrap_ci, depth_metrics
 from floodcam.real.reader import (
     DryTemplate,
     PlateReader,
@@ -68,20 +68,6 @@ def test_reader_fits_and_orders_levels():
     assert np.corrcoef(pred_cm, gage[90:])[0, 1] > 0.95
 
 
-def test_event_episodes_and_matching():
-    t = np.arange(0, 30, 1.0)
-    d = np.zeros(30)
-    d[5:12] = 10.0
-    d[20] = 4.0          # single isolated spike
-    filt = causal_median(d, np.ones(30, bool), window=5)
-    ep_f = episodes(filt, t)
-    ep_g = episodes(d, t)
-    assert ep_g[0][0] == 5.0
-    assert len(ep_f) == 1  # the median removes the isolated spike
-    m = match_episodes([(5.0, 12.0)], ep_f)
-    assert m["detected"] == 1 and m["false_episodes"] == 0
-
-
 def test_causal_median_skips_invalid():
     out = causal_median(np.array([1.0, 99.0, 3.0]), np.array([True, False, True]), window=5)
     assert out.tolist() == [1.0, 1.0, 2.0]
@@ -92,8 +78,8 @@ def test_metrics_basic():
     pr = np.array([0, 4, 5, 18.0])
     m = depth_metrics(gt, pr)
     assert m["mae_cm"] == pytest.approx(1.5)
-    f = flood_metrics(gt, pr)
-    assert (f["tp"], f["fp"], f["fn"], f["tn"]) == (2, 1, 0, 1)
+    assert set(m["mae_by_bin_cm"]) == {"0-0.5", "0.5-10", "10-25", ">=25"}
+    assert m["mae_by_bin_cm"]["0.5-10"]["n"] == 1
 
 
 def test_block_bootstrap_deterministic():

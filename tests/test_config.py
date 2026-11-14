@@ -19,16 +19,15 @@ class TestCameraConfig:
     def test_defaults(self):
         cfg = CameraConfig()
         assert cfg.fps_sample == 1
-        assert cfg.hysteresis.trigger_cm == 3.5
-        assert cfg.hysteresis.clear_cm == 2.5
-        assert cfg.severity.advisory_cm == 3.0
+        assert cfg.hysteresis.trigger_cm == 10.5
+        assert cfg.hysteresis.clear_cm == 9.5
         assert cfg.severity.warning_cm == 10.0
 
     def test_from_dict_partial_preserves_defaults(self):
         cfg = CameraConfig.from_dict({"camera_id": "cam_x", "fps_sample": 3})
         assert cfg.camera_id == "cam_x"
         assert cfg.fps_sample == 3
-        assert cfg.hysteresis.trigger_cm == 3.5  # default preserved
+        assert cfg.hysteresis.trigger_cm == 10.5  # default preserved
 
     def test_nested_roi_from_dict(self):
         cfg = CameraConfig.from_dict({"roi": {"x": 10, "y": 20, "w": 320, "h": 240}})

@@ -80,7 +80,7 @@ def rise_plateau_fall(
 
 
 def oscillation_around_threshold(
-    center_cm: float = 3.0,
+    center_cm: float = 10.0,
     amplitude_cm: float = 1.5,
     period_s: float = 60.0,
     duration_s: float = 600.0,

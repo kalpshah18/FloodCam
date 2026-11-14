@@ -13,7 +13,6 @@ import yaml
 
 @dataclass
 class SeverityThresholds:
-    advisory_cm: float = 3.0
     warning_cm: float = 10.0
     severe_cm: float = 25.0
     critical_cm: float = 50.0
@@ -26,8 +25,8 @@ class SeverityThresholds:
 
 @dataclass
 class HysteresisConfig:
-    trigger_cm: float = 3.5
-    clear_cm: float = 2.5
+    trigger_cm: float = 10.5
+    clear_cm: float = 9.5
     persistence_min: float = 5.0
 
     @classmethod
@@ -86,8 +85,8 @@ class TemporalConfig:
     trend_window_minutes: float = 10.0
     falling_slope_cm_per_10min: float = -1.0
     rise_escalation_cm_per_10min: float = 5.0
-    trigger_cm: float = 3.5
-    clear_cm: float = 2.5
+    trigger_cm: float = 10.5
+    clear_cm: float = 9.5
     max_gap_seconds: float = 30.0
 
     def __post_init__(self) -> None:

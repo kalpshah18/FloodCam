@@ -49,7 +49,6 @@ st.set_page_config(
 
 _SEVERITY_COLOR = {
     "Normal": "#009E73",      # green
-    "Advisory": "#56B4E9",    # sky-blue
     "Warning": "#E69F00",     # orange
     "Severe": "#D55E00",      # vermilion
     "Critical": "#CC79A7",    # reddish-purple
@@ -65,10 +64,9 @@ _STATE_COLOR = {
 
 # Threshold lines (cm)
 _THRESHOLD_LINES = [
-    {"depth": 3.5,  "label": "trigger 3.5 cm",  "color": "#E69F00"},
-    {"depth": 2.5,  "label": "clear 2.5 cm",    "color": "#56B4E9"},
-    {"depth": 3.0,  "label": "Normal/Advisory",  "color": "#009E73"},
-    {"depth": 10.0, "label": "Advisory/Warning", "color": "#F0E442"},
+    {"depth": 10.5, "label": "trigger 10.5 cm", "color": "#E69F00"},
+    {"depth": 9.5,  "label": "clear 9.5 cm",    "color": "#56B4E9"},
+    {"depth": 10.0, "label": "Normal/Warning",  "color": "#F0E442"},
     {"depth": 25.0, "label": "Warning/Severe",   "color": "#D55E00"},
     {"depth": 50.0, "label": "Severe/Critical",  "color": "#CC79A7"},
 ]

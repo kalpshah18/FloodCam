@@ -26,6 +26,7 @@ from floodcam.real.plate import SiteSpec  # noqa: E402
 R = ROOT / "results" / "real"
 P = ROOT / "paper"
 SITE = "in_overland"
+DRY_CM = 0.5  # gauge at or below this counts as dry (the paper's "dry" depth range)
 plt.rcParams.update({"font.size": 8, "axes.titlesize": 8.5, "axes.labelsize": 8, "legend.fontsize": 6.5,
                      "xtick.labelsize": 7.5, "ytick.labelsize": 7.5, "pdf.fonttype": 42})
 C = {"learned": "#1f77b4", "base": "#ff7f0e", "gauge": "black"}
@@ -60,8 +61,6 @@ def facts():
     num("nLockedFrames", int(m.time.str[:7].isin(split["locked_test_blocks"]).sum()), "{:d}")
     num("pctIR", 100 * m.is_ir.mean(), "{:.0f}")
     num("pctDry", 100 * (m.gage_cm <= 0.5).mean(), "{:.0f}")
-    num("pctThreeBelowPlate", 100 * ((m.gage_cm >= 3) & (m.gage_cm < spec.bottom_ft * spec.ft_to_cm)).sum() / (m.gage_cm >= 3).sum(), "{:.0f}")
-    num("pctOverThree", 100 * (m.gage_cm >= 3).mean(), "{:.0f}")
     num("gaugeMax", m.gage_cm.max(), "{:.0f}")
     num("yearFirst", m.time.min()[:4], "{}")
     num("yearLast", m.time.max()[:4], "{}")
@@ -76,39 +75,8 @@ def facts():
 
 
 # ----------------------------------------------------------------------------- main table
-def metric_row(label, scope, meth, m):
-    d = m[scope][meth]
-    dd, f = d["depth"], d["flood_3cm"]
-    lo, hi = d["mae_ci95_block_bootstrap"]
-    n3 = dd["near_3cm"]["mae_cm"]
-    return (f"{label} & {scope_name[scope]} & {meth_name[meth]} & {dd['n']} & {dd['mae_cm']:.2f} "
-            f"[{lo:.2f}, {hi:.2f}] & {'--' if n3 is None else f'{n3:.1f}'} & "
-            f"{f['f1']:.2f} & {f['false_alarm_rate']:.2f} \\\\")
-
-
 scope_name = {"gated": "gated", "all_frames": "all"}
 meth_name = {"learned": "learned reader", "threshold_baseline": "threshold baseline", "always_no_flood": "always 0 cm"}
-
-
-def main_table(cv, fin):
-    rows = []
-    for label, m in (("CV (dev)", cv), ("Locked", fin)):
-        for scope in ("gated", "all_frames"):
-            for meth in ("learned", "threshold_baseline", "always_no_flood"):
-                if scope == "all_frames" and meth == "always_no_flood":
-                    continue
-                rows.append(metric_row(label if (scope == "gated" and meth == "learned") else "", scope, meth, m))
-        rows.append("\\midrule")
-    rows = rows[:-1]
-    cov = lambda m: f"{100 * m['coverage']:.0f}"
-    num("covDev", 100 * cv["coverage"], "{:.0f}")
-    num("covLocked", 100 * fin["coverage"], "{:.0f}")
-    tex = ("\\begin{tabular}{@{}llllrlccc@{}}\n\\toprule\n"
-           "Eval. & Frames & Method & $n$ & MAE (cm) [95\\% CI] & near-3\\,cm MAE & F1 & FAR \\\\\n\\midrule\n"
-           + "\n".join(rows) + "\n\\bottomrule\n\\end{tabular}\n")
-    tex = tex.replace("llllrlccc", "lllrlccc").replace("Eval. & Frames & Method & $n$", "Eval. & Frames & Method & $n$")
-    # remove the extra column introduced above (label column holds eval + frames)
-    return tex
 
 
 def _bin_mae(d, lo_keys):
@@ -134,7 +102,7 @@ def main_table2(cv, fin):
                 lo, hi = d["mae_ci95_block_bootstrap"]
                 mae = f"{dd['mae_cm']:.2f}" if label == "Locked" else f"{dd['mae_cm']:.2f} [{lo:.1f}, {hi:.1f}]"
                 b_dry = _bin_mae(dd, ["0-0.5"])
-                b_sh = _bin_mae(dd, ["0.5-3", "3-10"])
+                b_sh = _bin_mae(dd, ["0.5-10"])
                 b_dp = _bin_mae(dd, ["10-25", ">=25"])
                 f = lambda v: "--" if v is None else f"{v:.1f}"
                 body.append(f"{label if first else ''} & {scope_name[scope]} & {meth_name[meth]} & {dd['n']} & "
@@ -181,43 +149,26 @@ def run_numbers(cv, fin, cvd, find):
         num(f"maeBase{tag}Gated", B["depth"]["mae_cm"])
         num(f"maeBase{tag}All", a["threshold_baseline"]["depth"]["mae_cm"])
         num(f"maeZero{tag}", T["depth"]["mae_cm"])
-        num(f"fone{tag}", L["flood_3cm"]["f1"])
-        num(f"foneBase{tag}", B["flood_3cm"]["f1"])
-        num(f"prec{tag}", L["flood_3cm"]["precision"])
-        num(f"rec{tag}", L["flood_3cm"]["recall"])
-        num(f"far{tag}", L["flood_3cm"]["false_alarm_rate"])
-        num(f"farBase{tag}", B["flood_3cm"]["false_alarm_rate"])
-        num(f"recBase{tag}", B["flood_3cm"]["recall"])
-        num(f"nearThree{tag}", L["depth"]["near_3cm"]["mae_cm"] or float("nan"), "{:.1f}")
-        num(f"nearThreeZero{tag}", T["depth"]["near_3cm"]["mae_cm"] or float("nan"), "{:.1f}")
         num(f"rmse{tag}Gated", L["depth"]["rmse_cm"], "{:.1f}")
         num(f"bias{tag}Gated", L["depth"]["bias_cm"], "{:+.1f}")
-        sh = _bin_mae(L["depth"], ["0.5-3", "3-10"])
-        shz = _bin_mae(T["depth"], ["0.5-3", "3-10"])
-        shb = _bin_mae(B["depth"], ["0.5-3", "3-10"])
+        sh = _bin_mae(L["depth"], ["0.5-10"])
+        shz = _bin_mae(T["depth"], ["0.5-10"])
+        shb = _bin_mae(B["depth"], ["0.5-10"])
         num(f"shallow{tag}", sh if sh is not None else float("nan"), "{:.1f}")
         num(f"shallowZero{tag}", shz if shz is not None else float("nan"), "{:.1f}")
         num(f"shallowBase{tag}", shb if shb is not None else float("nan"), "{:.1f}")
-        num(f"shallowN{tag}", sum(L["depth"]["mae_by_bin_cm"][k]["n"] for k in ("0.5-3", "3-10")), "{:d}")
+        num(f"shallowN{tag}", L["depth"]["mae_by_bin_cm"]["0.5-10"]["n"], "{:d}")
         pb = L["by_block"]
         num(f"blockMedian{tag}", pb["mae_median"])
         num(f"blockWorst{tag}", pb["mae_worst"])
         bins = L["depth"]["mae_by_bin_cm"]
         for k, v in bins.items():
-            key = {"0-0.5": "A", "0.5-3": "B", "3-10": "C", "10-25": "D", ">=25": "E"}[k]
+            key = {"0-0.5": "A", "0.5-10": "B", "10-25": "C", ">=25": "D"}[k]
             num(f"bin{key}{tag}", v["mae_cm"] if v["mae_cm"] is not None else float("nan"))
             num(f"binN{key}{tag}", v["n"], "{:d}")
     fv1 = json.loads((R / "final_v1_gate_one_sided_metrics.json").read_text())
     num("maeLockedVOneGated", fv1["gated"]["learned"]["depth"]["mae_cm"])
     num("covLockedVOne", 100 * fv1["coverage"], "{:.0f}")
-    # event-level
-    ev = pd.read_csv(R / "tables" / "event_level.csv")
-    for run, tag in (("cv_dev", "Dev"), ("locked_test", "Locked")):
-        e = ev[ev.run == run]
-        num(f"gtEp{tag}", e.gt_episodes.sum(), "{:d}")
-        num(f"detEp{tag}", e.detected.sum(), "{:d}")
-        num(f"falseEp{tag}", e.false_episodes.sum(), "{:d}")
-        num(f"delay{tag}", e.median_onset_delay_h.median(), "{:.1f}")
     # resolution
     res = json.loads((R / f"resolution-{SITE}" / "summary.json").read_text())
     g = pd.DataFrame([r for r in res["rows"] if r["scope"] == "gated"])
@@ -232,13 +183,6 @@ def run_numbers(cv, fin, cvd, find):
         num(f"resBase{lab}", r.baseline_mae)
     dbl = g[g.learned_mae >= 2 * g.learned_mae.iloc[0]]
     num("sDouble", dbl.cm_per_px.min() if len(dbl) else float("nan"), "{:.1f}")
-    ok = g[g.learned_f1 >= 0.9]
-    num("sMaxOk", ok.cm_per_px.max(), "{:.1f}")
-    bad = g[g.learned_f1 < 0.9]
-    num("sFirstBad", bad.cm_per_px.min() if len(bad) else float("nan"), "{:.1f}")
-    num("fOneAtNative", g.learned_f1.iloc[0])
-    num("fOneAtBad", bad.learned_f1.iloc[0] if len(bad) else float("nan"))
-    num("maeAtBad", bad.learned_mae.iloc[0] if len(bad) else float("nan"))
     num("maeAtNative", g.learned_mae.iloc[0])
     num("regionsMax", g.cm_per_px.max(), "{:.0f}")
     return res, g
@@ -313,8 +257,7 @@ def multicam():
         num(f"cam{tag}Max", l["gauge_max_cm"], "{:.0f}")
         _lp = pd.read_csv(R / "loco" / "predictions.csv")
         _g = _lp[(_lp.site == site) & _lp.accepted]
-        _w = _g[_g.gauge_cm > 3]
-        num(f"cam{tag}WetRecall", float((_w.zero_shot_cm > 3).mean()), "{:.2f}")
+        _w = _g[_g.gauge_cm > DRY_CM]
         num(f"cam{tag}WetMae", float((_w.zero_shot_cm - _w.gauge_cm).abs().mean()), "{:.1f}")
         num(f"cam{tag}WetZero", float(_w.gauge_cm.mean()), "{:.1f}")
     h = json.loads((TR / "metrics.json").read_text())
@@ -408,7 +351,7 @@ def fig_cams():
         idx = {f: k for k, f in enumerate(z["files"])}
         d = pr[(pr.site == site) & pr.accepted].copy()
         d["ae"] = (d.zero_shot_cm - d.gauge_cm).abs()
-        wet = d[d.gauge_cm > 3]
+        wet = d[d.gauge_cm > DRY_CM]
         pool = wet if len(wet) > 20 else d
         picks = [("median error", pool.sort_values("ae").iloc[len(pool) // 2]), ("worst", d.sort_values("ae").iloc[-1])]
         for rr, (kind, row) in enumerate(picks):
@@ -438,8 +381,7 @@ def subgroup_table(cv):
     rows, out = [], {}
     for col in ("dayir", "pose", "gate"):
         for k, s in d.groupby(col):
-            rows.append(f"{k} & {len(s)} & {100 * len(s) / len(d):.0f}\\% & {s.ae.mean():.2f} & "
-                        f"{((s.learned_cm >= 3) == (s.gauge_cm >= 3)).mean():.2f} \\\\")
+            rows.append(f"{k} & {len(s)} & {100 * len(s) / len(d):.0f}\\% & {s.ae.mean():.2f} \\\\")
             out[k] = s.ae.mean()
         rows.append("\\midrule")
     num("maeIR", out["infrared night"])
@@ -451,7 +393,7 @@ def subgroup_table(cv):
     # dirty-lens high variance frames
     hi = d[d.lapvar > d.lapvar.median() * 1.7]
     num("maeHighLap", hi.ae.mean())
-    return ("\\begin{tabular}{@{}lrrcc@{}}\n\\toprule\nSubset (CV, all frames) & $n$ & share & MAE (cm) & 3\\,cm agree \\\\\n"
+    return ("\\begin{tabular}{@{}lrrc@{}}\n\\toprule\nSubset (CV, all frames) & $n$ & share & MAE (cm) \\\\\n"
             "\\midrule\n" + "\n".join(rows[:-1]) + "\n\\bottomrule\n\\end{tabular}\n")
 
 
@@ -550,7 +492,7 @@ def fig_frames(cv):
         zi = {f: k for k, f in enumerate(zz["files"])}
         dd = lp[(lp.site == site) & lp.accepted].copy()
         dd["ae"] = (dd.zero_shot_cm - dd.gauge_cm).abs()
-        pool = dd[dd.gauge_cm > 3] if (dd.gauge_cm > 3).sum() > 20 else dd
+        pool = dd[dd.gauge_cm > DRY_CM] if (dd.gauge_cm > DRY_CM).sum() > 20 else dd
         r_ = pool.sort_values("ae").iloc[len(pool) // 2] if kind == "median" else dd.sort_values("ae").iloc[-1]
         im_ = cv2.imread(str(ROOT / man[r_.file]["path"]))
         im_ = cv2.resize(im_, (300, round(300 * im_.shape[0] / im_.shape[1])))

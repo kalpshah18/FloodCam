@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""HSV baseline: grid-search on LOSO folds, report depth and flood metrics.
+"""HSV baseline: grid-search on LOSO folds, report depth-error metrics.
 
 Usage:
     python scripts/run_hsv_baseline.py [--run-id hsv-001] [--seed 42]
@@ -34,7 +34,6 @@ from floodcam.synth.renderer import SceneConfig, SynthRenderer  # noqa: E402
 LOCKED_SCENE = "synth_scene_01"
 SPLITS_FILE = ROOT / "data" / "splits" / "synthetic_splits.json"
 DEPTHS_CM = [0.0, 2.0, 3.0, 5.0, 10.0, 20.0]
-FLOOD_TRIGGER_CM = 3.5
 
 _NORMAL_SCENE_PARAMS = [
     # (camera_height_cm, tilt_deg, focal_px, pole_dist_cm, lighting_tag)
@@ -47,12 +46,6 @@ _NORMAL_SCENE_PARAMS = [
     (100.0, 17.0, 540.0, 230.0, "synthetic_indoor_side"),           # synth_scene_06
     (140.0, 23.0, 640.0, 195.0, "synthetic_outdoor_cloudy"),        # synth_scene_07
 ]
-
-_NEGATIVE_SCENE_PARAMS = [
-    (120.0, 20.0, 600.0, 200.0, "reflection"),   # synth_neg_reflection_00
-    (120.0, 20.0, 600.0, 200.0, "wet_road"),      # synth_neg_wet_road_01
-]
-
 
 # ---------------------------------------------------------------------------
 # Scene factory
@@ -79,18 +72,6 @@ def scene_id_to_renderer(scene_id: str, seed: int = 42) -> tuple:
     )
     scene_seed = seed * 1000 + idx
     return SynthRenderer(scene_cfg, seed=scene_seed), scene_cfg
-
-
-def _neg_renderer(neg_idx: int, seed: int = 42) -> SynthRenderer:
-    h, tilt, f, dist, _ = _NEGATIVE_SCENE_PARAMS[neg_idx]
-    scene_cfg = SceneConfig(
-        camera_height_cm=h,
-        camera_tilt_deg=tilt,
-        focal_length_px=f,
-        pole_distance_cm=dist,
-    )
-    scene_seed = seed * 1000 + len(_NORMAL_SCENE_PARAMS) + neg_idx
-    return SynthRenderer(scene_cfg, seed=scene_seed)
 
 
 # ---------------------------------------------------------------------------
@@ -132,15 +113,6 @@ def _compute_metrics(preds: list[float], truths: list[float]) -> dict:
     errors = [abs(p - t) for p, t in zip(preds, truths)]
     mae = sum(errors) / len(errors) if errors else float("nan")
 
-    near_threshold_errors = [
-        abs(p - t) for p, t in zip(preds, truths) if t in (2.0, 3.0)
-    ]
-    mae_near_3cm = (
-        sum(near_threshold_errors) / len(near_threshold_errors)
-        if near_threshold_errors
-        else float("nan")
-    )
-
     per_depth: dict[str, float] = {}
     depth_bins: dict[float, list[float]] = {}
     for p, t in zip(preds, truths):
@@ -148,19 +120,9 @@ def _compute_metrics(preds: list[float], truths: list[float]) -> dict:
     for d, errs in sorted(depth_bins.items()):
         per_depth[f"{d:.1f}cm"] = sum(errs) / len(errs)
 
-    tp = sum(1 for p, t in zip(preds, truths) if p >= FLOOD_TRIGGER_CM and t >= FLOOD_TRIGGER_CM)
-    fp = sum(1 for p, t in zip(preds, truths) if p >= FLOOD_TRIGGER_CM and t < FLOOD_TRIGGER_CM)
-    fn = sum(1 for p, t in zip(preds, truths) if p < FLOOD_TRIGGER_CM and t >= FLOOD_TRIGGER_CM)
-
-    precision = tp / (tp + fp) if (tp + fp) > 0 else float("nan")
-    recall = tp / (tp + fn) if (tp + fn) > 0 else float("nan")
-
     return {
         "mae_cm": mae,
-        "mae_near_3cm": mae_near_3cm,
         "mae_per_depth_bin": per_depth,
-        "flood_precision": precision,
-        "flood_recall": recall,
     }
 
 
@@ -235,28 +197,6 @@ def main(argv=None) -> int:
     # Trivial baseline: always predict 0 cm
     trivial_mae = sum(abs(t) for t in final_result["truths"]) / len(final_result["truths"])
 
-    # Negative scenes: false flood rate at depth=0
-    neg_flood_count = 0
-    neg_total = 0
-    neg_variants = ["reflection", "wet_road"]
-    for ni, variant in enumerate(neg_variants):
-        renderer = _neg_renderer(ni, seed=seed)
-        cam_cfg = make_camera_config_for_renderer(renderer)
-        exp_cfg = ExperimentConfig(
-            hsv_lower=best_lo,
-            hsv_upper=best_hi,
-            hsv_morph_open=0,
-            hsv_morph_close=0,
-        )
-        for fi in range(5):
-            frame = renderer.render_frame(0.0, frame_idx=fi, variant=variant)
-            result = estimate(frame.image, cam_cfg, exp_cfg)
-            neg_total += 1
-            if result.valid and result.depth_cm >= FLOOD_TRIGGER_CM:
-                neg_flood_count += 1
-
-    false_flood_rate = neg_flood_count / neg_total if neg_total > 0 else 0.0
-
     metrics_out = {
         "note": (
             "SYNTHETIC RESULTS — pipeline validation only. "
@@ -276,8 +216,6 @@ def main(argv=None) -> int:
             k: round(v, 4) for k, v in final_metrics["mae_per_depth_bin"].items()
         },
         "trivial_baseline_mae_cm": round(trivial_mae, 4),
-        "false_flood_rate_negatives": round(false_flood_rate, 4),
-        "n_negative_frames": neg_total,
     }
 
     meta_out = {
@@ -302,11 +240,7 @@ def main(argv=None) -> int:
 
     print(f"\nResults written to {results_dir}")
     print(f"  MAE (all non-locked): {final_metrics['mae_cm']:.3f} cm")
-    print(f"  MAE near 3 cm:        {final_metrics['mae_near_3cm']:.3f} cm")
-    print(f"  Flood precision:      {final_metrics['flood_precision']:.3f}")
-    print(f"  Flood recall:         {final_metrics['flood_recall']:.3f}")
     print(f"  Trivial baseline MAE: {trivial_mae:.3f} cm")
-    print(f"  False flood rate (negatives): {false_flood_rate:.3f}")
     return 0
 
 

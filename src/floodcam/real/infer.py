@@ -18,7 +18,6 @@ import cv2
 import joblib
 import numpy as np
 
-from floodcam.real.events import TRIGGER_CM
 from floodcam.real.plate import ROOT, PlateRectifier, Registration, SiteSpec
 from floodcam.real.reader import PlateReader, row_features, strip_stats
 
@@ -49,7 +48,6 @@ class Reading:
     is_ir: bool
     registered: bool
     inliers: int
-    flood: bool            # depth_cm >= 3 cm (only meaningful when status == "ok")
     strip: np.ndarray | None = None
     H: np.ndarray | None = None
 
@@ -75,7 +73,7 @@ class PlateModel:
         lap, bright, is_ir = frame_quality(bgr)
         reg = self.rect.register(bgr) if H is None else Registration(H, 0, True)
         if not reg.ok and H is None:
-            return Reading(0.0, "unregistered", 0.0, lap, is_ir, False, reg.inliers, False)
+            return Reading(0.0, "unregistered", 0.0, lap, is_ir, False, reg.inliers)
         use_H = reg.H if reg.ok else H
         strip = self.rect.strip(bgr, Registration(use_H, reg.inliers, True))
         quality = np.array([[np.log1p(lap), bright / 255.0, float(borrowed or not reg.ok)]], np.float32)
@@ -85,7 +83,7 @@ class PlateModel:
         ok = self.b["lap_lo"] <= lap <= self.b["lap_hi"]
         d = float(cm[0])
         return Reading(d, "ok" if ok else "rejected_quality", float(margin[0]), lap, is_ir, reg.ok,
-                       reg.inliers, d >= TRIGGER_CM - 0.5, strip, use_H)
+                       reg.inliers, strip, use_H)
 
 
 class PlateStream:

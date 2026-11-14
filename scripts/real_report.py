@@ -22,7 +22,6 @@ import pandas as pd  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
-from floodcam.real.events import causal_median, episodes, match_episodes  # noqa: E402
 
 R = ROOT / "results" / "real"
 FIG, TAB, FAIL = R / "figures", R / "tables", R / "failures"
@@ -42,8 +41,6 @@ def scatter(d, title, path):
         ax.scatter(s.gauge_cm, s.learned_cm, s=8, alpha=0.6, label=b)
     m = max(g.gauge_cm.max(), g.learned_cm.max()) * 1.05
     ax.plot([0, m], [0, m], "k--", lw=1)
-    ax.axhline(3, color="r", lw=0.8)
-    ax.axvline(3, color="r", lw=0.8)
     ax.set(xlabel="USGS gauge (cm)", ylabel="camera estimate (cm)", title=title)
     ax.legend(fontsize=6, ncol=2)
     fig.tight_layout()
@@ -60,7 +57,6 @@ def timeseries(d, block, path):
     ax.plot(acc.time, acc.baseline_cm, ".", ms=3, color="tab:orange", alpha=0.5, label="threshold baseline")
     rej = s[~s.accepted]
     ax.plot(rej.time, np.zeros(len(rej)) - 1.5, "|", color="gray", label="rejected (blur/obstruction)")
-    ax.axhline(3, color="r", lw=0.8, ls="--")
     ax.set(ylabel="depth (cm)", title=f"held-out block {block}")
     ax.legend(fontsize=7, ncol=4)
     fig.autofmt_xdate()
@@ -108,50 +104,18 @@ def resolution(path):
     df = pd.DataFrame(j["rows"])
     g = df[df.scope == "gated"]
     fit = j["error_model_fit"]
-    fig, ax = plt.subplots(1, 2, figsize=(9, 3.2))
-    ax[0].plot(g.cm_per_px, g.learned_rmse, "o-", label="measured RMSE (learned)")
-    ax[0].plot(g.cm_per_px, fit["predicted_rmse"], "k--", label="error model fit")
-    ax[0].plot(g.cm_per_px, g.baseline_mae, "s-", alpha=0.5, label="baseline MAE")
-    ax[0].set(xscale="log", xlabel="cm per pixel along the plate", ylabel="cm")
-    ax[0].legend(fontsize=7)
-    ax[1].plot(g.cm_per_px, g.learned_f1, "o-", label="F1 (>=3 cm)")
-    ax[1].plot(g.cm_per_px, g.learned_recall, "s-", label="recall")
-    ax[1].plot(g.cm_per_px, g.learned_precision, "^-", label="precision")
-    ax[1].axvline(3.0, color="gray", lw=0.6)
-    ax[1].set(xscale="log", xlabel="cm per pixel along the plate", ylim=(0, 1.02))
-    ax[1].legend(fontsize=7)
+    fig, ax = plt.subplots(figsize=(5, 3.2))
+    ax.plot(g.cm_per_px, g.learned_rmse, "o-", label="measured RMSE (learned)")
+    ax.plot(g.cm_per_px, g.learned_mae, "^-", label="measured MAE (learned)")
+    ax.plot(g.cm_per_px, fit["predicted_rmse"], "k--", label="error model fit")
+    ax.plot(g.cm_per_px, g.baseline_mae, "s-", alpha=0.5, label="baseline MAE")
+    ax.set(xscale="log", xlabel="cm per pixel along the plate", ylabel="cm")
+    ax.legend(fontsize=7)
     fig.tight_layout()
     fig.savefig(path, dpi=140)
     plt.close(fig)
     df.to_csv(TAB / "resolution.csv", index=False)
     return j
-
-
-def event_level(d, run_name, gap_h=6.0):
-    """Episodes per contiguous session. The archive holds sampled windows (days apart), so a block is
-    split wherever consecutive frames are more than gap_h hours apart; episodes never span a gap."""
-    rows = []
-    for b, s in d.groupby("block"):
-        s = s.sort_values("time")
-        tt = (s.time - s.time.iloc[0]).dt.total_seconds().values / 3600
-        seg = np.concatenate([[0], np.cumsum(np.diff(tt) > gap_h)])
-        agg = {"gt": 0, "det": 0, "false": 0, "delays": [], "days": 0.0}
-        for k in np.unique(seg):
-            m = seg == k
-            ss, t = s[m], tt[m]
-            filt = causal_median(ss.learned_cm.values, ss.accepted.values)
-            res = match_episodes(episodes(ss.gauge_cm.values, t), episodes(filt, t))
-            agg["gt"] += res["gt_episodes"]
-            agg["det"] += res["detected"]
-            agg["false"] += res["false_episodes"]
-            agg["delays"] += res["onset_delay_h"]
-            agg["days"] += (t[-1] - t[0]) / 24
-        rows.append({"run": run_name, "block": b, "sessions": int(seg.max()) + 1,
-                     "observed_days": agg["days"], "gt_episodes": agg["gt"], "detected": agg["det"],
-                     "false_episodes": agg["false"],
-                     "median_onset_delay_h": float(np.median(agg["delays"])) if agg["delays"] else None,
-                     "false_per_day": agg["false"] / max(agg["days"], 1e-6)})
-    return pd.DataFrame(rows)
 
 
 def failure_audit(d, n_worst=10, n_rej=6):
@@ -193,7 +157,6 @@ def main() -> int:
             timeseries(cv, b, FIG / f"timeseries_{b}.png")
     failure_audit(cv)
     res = resolution(FIG / "resolution.png")
-    ev = [event_level(cv, "cv_dev")]
     fin = None
     final_run = next((r for r in (f"real-final-{SITE}-f1-force", f"real-final-{SITE}-f1")
                       if (R / r / "predictions.csv").exists()), None)
@@ -202,8 +165,7 @@ def main() -> int:
         scatter(fd, "Locked test blocks (gated)", FIG / "scatter_final.png")
         for b in fd.block.unique():
             timeseries(fd, b, FIG / f"timeseries_final_{b}.png")
-        ev.append(event_level(fd, "locked_test"))
-    pd.concat(ev).to_csv(TAB / "event_level.csv", index=False)
+    (TAB / "event_level.csv").unlink(missing_ok=True)  # removed analysis; drop any stale table
 
     L = ["# Real-footage results (generated by scripts/real_report.py)\n",
          "Source: USGS gauge cameras + USGS gauge height (public domain); see data/usgs/README.md.\n"]
@@ -211,16 +173,14 @@ def main() -> int:
     def block(title, s):
         L.append(f"\n## {title}\n")
         L.append(f"Coverage after sharpness gate: {s['coverage']:.1%}\n")
-        L.append("| scope | method | n | MAE cm | 95% CI (block bootstrap) | MAE near 3 cm | P(>=3cm) | R | F1 | false-alarm rate |")
-        L.append("|---|---|---|---|---|---|---|---|---|---|")
+        L.append("| scope | method | n | MAE cm | 95% CI (block bootstrap) | RMSE cm | bias cm |")
+        L.append("|---|---|---|---|---|---|---|")
         for scope in ("all_frames", "gated"):
             for name, sc in s[scope].items():
-                d_, f_ = sc["depth"], sc["flood_3cm"]
+                d_ = sc["depth"]
                 lo, hi = sc["mae_ci95_block_bootstrap"]
-                n3 = d_["near_3cm"]["mae_cm"]
                 L.append(f"| {scope} | {name} | {d_['n']} | {d_['mae_cm']:.2f} | {lo:.2f}-{hi:.2f} | "
-                         f"{'-' if n3 is None else f'{n3:.2f}'} | {f_['precision']:.2f} | {f_['recall']:.2f} | "
-                         f"{f_['f1']:.2f} | {f_['false_alarm_rate']:.3f} |")
+                         f"{d_['rmse_cm']:.2f} | {d_['bias_cm']:+.2f} |")
         L.append("\nMAE by depth bin (gated, learned):\n")
         L.append("| bin cm | n | MAE cm |\n|---|---|---|")
         for k, v in s["gated"]["learned"]["depth"]["mae_by_bin_cm"].items():
@@ -236,19 +196,14 @@ def main() -> int:
         L.append("\nNote: the locked blocks were evaluated first with a one-sided sharpness gate (results/real/final_v1_gate_one_sided_metrics.json). The two-sided gate was then chosen from DEV-block error only and the locked run repeated with --force; both runs are in results/real/final_test_log.jsonl.\n")
     if res:
         L.append("\n## Resolution sweep (gated, learned reader, LOBO CV)\n")
-        L.append("| factor | cm/px | MAE | RMSE | near-3cm MAE | precision | recall | F1 |\n|---|---|---|---|---|---|---|---|")
+        L.append("| factor | cm/px | n | MAE | RMSE | baseline MAE |\n|---|---|---|---|---|---|")
         for r in res["rows"]:
             if r["scope"] == "gated":
-                n3 = r["learned_near3_mae"]
-                L.append(f"| {r['factor']} | {r['cm_per_px']:.2f} | {r['learned_mae']:.2f} | {r['learned_rmse']:.2f} | "
-                         f"{'-' if n3 is None else f'{n3:.2f}'} | {r['learned_precision']:.2f} | "
-                         f"{r['learned_recall']:.2f} | {r['learned_f1']:.2f} |")
+                L.append(f"| {r['factor']} | {r['cm_per_px']:.2f} | {r['n']} | {r['learned_mae']:.2f} | "
+                         f"{r['learned_rmse']:.2f} | {r['baseline_mae']:.2f} |")
         f = res["error_model_fit"]
         L.append(f"\nError-model fit RMSE^2 = (sigma_v*s)^2 + floor^2: sigma_v = {f['sigma_v_px']:.2f} px, "
                  f"floor = {f['sigma_floor_cm']:.2f} cm.\n")
-    L.append("\n## Event level (causal median filter, hysteresis 3.5/2.5 cm)\n")
-    evt = pd.concat(ev)
-    L.append("```\n" + evt.to_string(index=False, float_format=lambda v: f"{v:.2f}") + "\n```")
     (R / "SUMMARY.md").write_text("\n".join(L) + "\n")
     print("wrote", R / "SUMMARY.md")
     return 0

@@ -35,8 +35,8 @@ def _default_cfg(**kwargs) -> TemporalConfig:
         trend_window_minutes=10.0,
         falling_slope_cm_per_10min=-1.0,
         rise_escalation_cm_per_10min=5.0,
-        trigger_cm=3.5,
-        clear_cm=2.5,
+        trigger_cm=10.5,
+        clear_cm=9.5,
         max_gap_seconds=30.0,
     )
     defaults.update(kwargs)
@@ -153,9 +153,7 @@ def test_stale_resets_after_new_sample():
 def test_depth_to_severity_boundaries():
     cases = [
         (0.0, SeverityClass.Normal),
-        (2.9, SeverityClass.Normal),
-        (3.0, SeverityClass.Advisory),
-        (9.9, SeverityClass.Advisory),
+        (9.9, SeverityClass.Normal),
         (10.0, SeverityClass.Warning),
         (24.9, SeverityClass.Warning),
         (25.0, SeverityClass.Severe),
@@ -168,7 +166,7 @@ def test_depth_to_severity_boundaries():
 
 
 def test_escalation_raises_by_one():
-    result = apply_rate_escalation(SeverityClass.Advisory, rate_cm_per_10min=6.0)
+    result = apply_rate_escalation(SeverityClass.Normal, rate_cm_per_10min=6.0)
     assert result == SeverityClass.Warning
 
 
@@ -178,8 +176,8 @@ def test_escalation_does_not_exceed_critical():
 
 
 def test_no_escalation_below_threshold():
-    result = apply_rate_escalation(SeverityClass.Advisory, rate_cm_per_10min=4.9)
-    assert result == SeverityClass.Advisory
+    result = apply_rate_escalation(SeverityClass.Warning, rate_cm_per_10min=4.9)
+    assert result == SeverityClass.Warning
 
 
 # ---------------------------------------------------------------------------
@@ -218,16 +216,16 @@ def test_steady_rise_reaches_flood_after_persistence():
 
 
 def test_oscillation_no_chatter():
-    # center=3.0, amplitude=1.5 → depth swings [1.5, 4.5] cm.
-    # 4.5 > trigger_cm=3.5 → Normal→Pending is correct behavior.
-    # 1.5 < clear_cm=2.5 → Pending→Normal is correct behavior.
+    # center=10.0, amplitude=1.5 → depth swings [8.5, 11.5] cm.
+    # 11.5 > trigger_cm=10.5 → Normal→Pending is correct behavior.
+    # 8.5 < clear_cm=9.5 → Pending→Normal is correct behavior.
     # Normal↔Pending transitions are expected and correct — NOT a bug.
     # The only alert-safety properties are:
     #   1. Flood is never reached (persistence=5 min >> period=60 s).
     #   2. No individual Pending dwell reaches persistence_minutes.
     cfg = _default_cfg(filter_window_samples=5, trend_window_minutes=2.0, persistence_minutes=5.0)
     samples = oscillation_around_threshold(
-        center_cm=3.0, amplitude_cm=1.5, period_s=60.0, duration_s=600.0, seed=3
+        center_cm=10.0, amplitude_cm=1.5, period_s=60.0, duration_s=600.0, seed=3
     )
     outputs = _run_pipeline(samples, cfg)
     states = [o.state for o in outputs]
@@ -253,7 +251,7 @@ def test_oscillation_no_chatter():
 def test_spike_never_leaves_normal():
     cfg = _default_cfg(filter_window_samples=5, trend_window_minutes=1.0)
     samples = single_spike(
-        baseline_cm=1.0, spike_cm=8.0, spike_duration_s=2.0, duration_s=120.0, seed=4
+        baseline_cm=1.0, spike_cm=25.0, spike_duration_s=2.0, duration_s=120.0, seed=4
     )
     outputs = _run_pipeline(samples, cfg)
     for o in outputs:
@@ -330,17 +328,17 @@ def test_re_rise_from_recovering_returns_to_flood():
     )
     # Phase 1: long steady flood
     phase1 = steady_rise(0.0, 20.0, 1800.0, 1.0, seed=10)
-    # Phase 2: slow fall to 3 cm (still above clear_cm=2.5) → triggers Recovering
-    # Rate = (3-20)/20min × 10 ≈ -8.5 cm/10min < -1.0
+    # Phase 2: slow fall to 11 cm (still above clear_cm=9.5) → triggers Recovering
+    # Rate = (11-20)/20min × 10 ≈ -4.5 cm/10min < -1.0
     t_off = phase1[-1].timestamp_s + 1.0
     phase2 = [
-        SynthSample(t_off + i, 20.0 - i * (17.0 / 1200.0))
+        SynthSample(t_off + i, 20.0 - i * (9.0 / 1200.0))
         for i in range(1201)
     ]
-    # Phase 3: rise back from 3 to 12 cm → rate > -1.0 → Recovering → Flood
+    # Phase 3: rise back from 11 to 20 cm → rate > -1.0 → Recovering → Flood
     t_off2 = phase2[-1].timestamp_s + 1.0
     phase3 = [
-        SynthSample(t_off2 + i, 3.0 + i * (9.0 / 900.0))
+        SynthSample(t_off2 + i, 11.0 + i * (9.0 / 900.0))
         for i in range(901)
     ]
     all_samples = phase1 + phase2 + phase3
@@ -360,7 +358,7 @@ def test_re_rise_from_recovering_returns_to_flood():
 def test_dropout_gap_sets_stale():
     cfg = _default_cfg(max_gap_seconds=30.0, trend_window_minutes=2.0, filter_window_samples=5)
     samples = dropout_gap(
-        baseline_cm=5.0, gap_start_s=60.0, gap_duration_s=60.0, total_s=240.0, seed=5
+        baseline_cm=15.0, gap_start_s=60.0, gap_duration_s=60.0, total_s=240.0, seed=5
     )
     f = TemporalFilter(cfg)
     sm = StateMachine(cfg)
@@ -384,15 +382,15 @@ def test_dropout_gap_cannot_manufacture_flood():
     # A gap of 400 s (>> persistence=300 s) cannot manufacture a Flood.
     cfg = _default_cfg(max_gap_seconds=30.0, persistence_minutes=5.0, trend_window_minutes=5.0)
     samples: list[SynthSample] = []
-    # Phase 1: 10 s at depth=5.0 (above trigger → Pending)
+    # Phase 1: 10 s at depth=15.0 (above trigger → Pending)
     for i in range(10):
-        samples.append(SynthSample(float(i), 5.0))
+        samples.append(SynthSample(float(i), 15.0))
     # Phase 2: 400 s gap (valid=False — camera dropout)
     for i in range(400):
-        samples.append(SynthSample(10.0 + float(i), 5.0, valid=False))
-    # Phase 3: 30 s back at depth=5.0 (still Pending, rate=None rebuilding)
+        samples.append(SynthSample(10.0 + float(i), 15.0, valid=False))
+    # Phase 3: 30 s back at depth=15.0 (still Pending, rate=None rebuilding)
     for i in range(30):
-        samples.append(SynthSample(410.0 + float(i), 5.0))
+        samples.append(SynthSample(410.0 + float(i), 15.0))
 
     outputs = _run_pipeline(samples, cfg)
     states = [o.state for o in outputs]
@@ -413,7 +411,7 @@ def test_flood_never_goes_directly_to_normal():
     generators = [
         lambda s: steady_rise(0, 20, 900, 1.0, seed=s),
         lambda s: rise_plateau_fall(15, 300, 900, 1.0, seed=s),
-        lambda s: oscillation_around_threshold(3, 2, 60, 600, 1.0, seed=s),
+        lambda s: oscillation_around_threshold(10, 2, 60, 600, 1.0, seed=s),
         lambda s: slow_fall_from_deep(20, 0, 900, 1.0, seed=s),
     ]
     for seed_base in range(5):
@@ -444,7 +442,7 @@ def test_valid_transitions_only():
     generators = [
         lambda s: steady_rise(0, 20, 900, 1.0, seed=s),
         lambda s: rise_plateau_fall(15, 300, 900, 1.0, seed=s),
-        lambda s: oscillation_around_threshold(3, 2, 60, 600, 1.0, seed=s),
+        lambda s: oscillation_around_threshold(10, 2, 60, 600, 1.0, seed=s),
         lambda s: slow_fall_from_deep(20, 0, 900, 1.0, seed=s),
         lambda s: dropout_gap(5, 60, 60, 240, 1.0, seed=s),
     ]
@@ -578,4 +576,4 @@ def test_temporal_config_rejects_invalid_window():
 
 def test_temporal_config_rejects_inverted_thresholds():
     with pytest.raises(ValueError, match="trigger_cm"):
-        TemporalConfig(trigger_cm=2.0, clear_cm=3.0)
+        TemporalConfig(trigger_cm=9.0, clear_cm=10.0)

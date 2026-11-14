@@ -14,7 +14,7 @@ Follow these steps exactly to ensure frames are usable for calibration and depth
 
 - [ ] Fixed camera (phone or webcam) on a stable tripod or clamp — no movement during a session.
 - [ ] Rigid reference pole or vertical marking with known height increments (every 1 cm or 5 cm).
-  Recommended: a white PVC pipe with black tape marks at 0, 2, 3, 5, 10, 20 cm from the base.
+  Recommended: a white PVC pipe with black tape marks at 0, 2, 5, 10, 20, 30 cm from the base.
 - [ ] Shallow tray or controlled water patch (at least 30 × 30 cm, dark or neutral floor).
 - [ ] Tape measure.
 - [ ] Consistent lighting source (avoid direct sun reflections; diffuse indoor light preferred).
@@ -38,7 +38,7 @@ Minimum: 3 sessions (varied lighting: indoor diffuse, indoor directional, outdoo
 ### Within a session
 
 1. Start recording at **depth = 0 cm** (no water). Hold for ≥ 10 seconds.
-2. Add water incrementally: 2 cm, 3 cm, 5 cm, 10 cm, 20 cm. Hold each level for ≥ 10 seconds.
+2. Add water incrementally: 2 cm, 5 cm, 10 cm, 20 cm, 30 cm. Hold each level for ≥ 10 seconds.
 3. Measure each level with the tape measure against the pole.
 4. For negative conditions: record a separate clip with rain droplets, puddle reflections,
    or direct glare on the reference object.
@@ -69,7 +69,7 @@ Example: `20261101_lab_indoor_diffuse_01`
   "lighting": "indoor_diffuse",
   "background": "gray_floor",
   "synthetic": false,
-  "depths_cm": [0, 2, 3, 5, 10, 20],
+  "depths_cm": [0, 2, 5, 10, 20, 30],
   "fps": 1,
   "frame_count": null,
   "notes": ""

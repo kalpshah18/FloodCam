@@ -17,7 +17,7 @@ ROOT = Path(__file__).parent.parent
 R = ROOT / "results" / "real"
 DEMO = ROOT / "data" / "usgs" / "demo"
 
-SEV = [(3.0, "Normal", "#009E73"), (10.0, "Advisory", "#56B4E9"), (25.0, "Warning", "#E69F00"),
+SEV = [(10.0, "Normal", "#009E73"), (25.0, "Warning", "#E69F00"),
        (50.0, "Severe", "#D55E00"), (1e9, "Critical", "#CC79A7")]
 
 
@@ -50,10 +50,9 @@ def _headline() -> None:
         for scope in ("gated", "all_frames"):
             for meth in ("learned", "threshold_baseline", "always_no_flood"):
                 d = m[scope][meth]
-                f = d["flood_3cm"]
                 rows.append({"evaluation": label, "frames": "quality-gated" if scope == "gated" else "all",
                              "method": meth, "n": d["depth"]["n"], "MAE (cm)": round(d["depth"]["mae_cm"], 2),
-                             "F1 (>=3 cm)": None if f["f1"] != f["f1"] else round(f["f1"], 2),
+                             "RMSE (cm)": round(d["depth"]["rmse_cm"], 2),
                              "coverage": round(m["coverage"], 2) if scope == "gated" else 1.0})
     st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
     st.caption("Frames are from one camera; uncertainty is the spread across held-out months "
@@ -103,7 +102,7 @@ def render() -> None:
                         y="learned_cm:Q",
                         color=alt.Color("accepted:N", scale=alt.Scale(domain=[True, False], range=["#1f77b4", "#bbbbbb"]),
                                         legend=alt.Legend(title="passed gate")))
-                    rule = alt.Chart(pd.DataFrame({"y": [3.0]})).mark_rule(color="red", strokeDash=[4, 3]).encode(y="y:Q")
+                    rule = alt.Chart(pd.DataFrame({"y": [SEV[0][0]]})).mark_rule(color="red", strokeDash=[4, 3]).encode(y="y:Q")
                     right.altair_chart((g + pts + rule).properties(height=330), use_container_width=True)
 
             show(idx)
@@ -117,7 +116,7 @@ def render() -> None:
         _headline()
         for name, cap in (("scatter_final.png", "Locked test months: camera vs gauge"),
                           ("scatter_cv.png", "Leave-one-month-out: camera vs gauge"),
-                          ("resolution.png", "Error and 3 cm detection vs camera resolution"),
+                          ("resolution.png", "Depth error vs camera resolution"),
                           ("block_mae_cv.png", "Error per held-out month"),
                           ("risk_coverage_cv.png", "Error vs coverage (confidence-ranked)")):
             p = R / "figures" / name

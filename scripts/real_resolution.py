@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Depth error and 3 cm flood detection vs camera resolution (cm/pixel) on real USGS footage.
+"""Depth error vs camera resolution (cm/pixel) on real USGS footage.
 
 Each factor f downsamples every frame by f before registration and plate rectification
 (scripts/extract_strips.py --factor f), then runs leave-one-block-out CV on the DEV blocks.
@@ -53,14 +53,11 @@ def main() -> int:
             rows.append({
                 "factor": f, "cm_per_px": s0 * f, "scope": scope,
                 "learned_mae": L["depth"]["mae_cm"], "learned_rmse": L["depth"]["rmse_cm"],
-                "learned_f1": L["flood_3cm"]["f1"], "learned_precision": L["flood_3cm"]["precision"],
-                "learned_recall": L["flood_3cm"]["recall"], "learned_far": L["flood_3cm"]["false_alarm_rate"],
-                "learned_near3_mae": L["depth"]["near_3cm"]["mae_cm"],
-                "baseline_mae": B["depth"]["mae_cm"], "baseline_f1": B["flood_3cm"]["f1"],
+                "baseline_mae": B["depth"]["mae_cm"],
                 "n": L["depth"]["n"], "block_mae_iqr": L["by_block"]["mae_iqr"],
             })
         print(f"f={f} s={s0 * f:.2f} cm/px  gated MAE {rows[-1]['learned_mae']:.2f}  "
-              f"F1 {rows[-1]['learned_f1']:.2f}", flush=True)
+              f"RMSE {rows[-1]['learned_rmse']:.2f}", flush=True)
     # error model fit on gated RMSE
     g = [r for r in rows if r["scope"] == "gated"]
     s = np.array([r["cm_per_px"] for r in g])

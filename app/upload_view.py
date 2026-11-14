@@ -43,7 +43,7 @@ UPLOAD_DB = ROOT / "results" / "uploads.db"
 TMP = Path(tempfile.gettempdir()) / "floodcam_uploads"
 
 SEVERITY_COLOR = {
-    "Normal": "#009E73", "Advisory": "#56B4E9", "Warning": "#E69F00",
+    "Normal": "#009E73", "Warning": "#E69F00",
     "Severe": "#D55E00", "Critical": "#CC79A7",
 }
 STATE_COLOR = {
@@ -118,8 +118,8 @@ def _depth_chart(rows: list[dict], trigger: float, clear: float) -> alt.Chart | 
         y=alt.Y("raw:Q"), tooltip=["t", "raw", "depth", "state", "severity"]
     )
     rules = pd.DataFrame({
-        "y": [3.0, trigger, clear],
-        "label": ["3 cm flood threshold", f"trigger {trigger:g} cm", f"clear {clear:g} cm"],
+        "y": [trigger, clear],
+        "label": [f"trigger {trigger:g} cm", f"clear {clear:g} cm"],
     })
     rule = alt.Chart(rules).mark_rule(strokeDash=[5, 4]).encode(
         y="y:Q", color=alt.Color("label:N", legend=alt.Legend(title=None, orient="bottom"))
@@ -311,7 +311,7 @@ def _calibration_panel(video: Path, vid: str, demo: LiveSettings | None,
             "broken_mask": "Mask is fragmented beside the pole; adjust the detection settings.",
         }.get(est.reason, f"Reading invalid ({est.reason})."))
     if s_cm > 0.6:
-        st.warning(f"Scale is {s_cm:.2f} cm/px: coarse for a 3 cm threshold. "
+        st.warning(f"Scale is {s_cm:.2f} cm/px: coarse, so depth error will be larger. "
                    "Film closer or at higher resolution if you can.")
     return s
 
@@ -338,8 +338,8 @@ def render() -> None:
                        "(persistence 300 s, trend window 600 s).")
             persistence = st.number_input("Persistence before Flood (s)", 1.0, 3600.0, 10.0, 1.0)
             trend = st.number_input("Trend window (s)", 4.0, 3600.0, 20.0, 1.0)
-            trigger = st.number_input("Trigger (cm)", 0.5, 100.0, 3.5, 0.1)
-            clear = st.number_input("Clear (cm)", 0.1, 100.0, 2.5, 0.1)
+            trigger = st.number_input("Trigger (cm)", 0.5, 100.0, 10.5, 0.1)
+            clear = st.number_input("Clear (cm)", 0.1, 100.0, 9.5, 0.1)
             min_conf = st.slider("Min confidence", 0.0, 1.0, 0.3, 0.05)
             rate_esc = st.checkbox("Escalate severity on fast rise (5 cm/10 min)", value=False,
                                    help="Off by default: on short clips depth noise looks like "
@@ -500,12 +500,12 @@ def _results_footer(res: dict) -> None:
     st.divider()
     st.subheader("Summary")
     peak = df.loc[df["depth"].idxmax()]
-    above = df[df["depth"] >= 3.0]
+    flood = df[df["state"] == "Flood"]
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Peak depth", f"{peak['depth']:.1f} cm", help=f"at t = {_fmt_t(peak['t'])}")
-    c2.metric("First reached 3 cm", _fmt_t(above["t"].iloc[0]) if len(above) else "never")
+    c2.metric("First Flood state", _fmt_t(flood["t"].iloc[0]) if len(flood) else "never")
     dt = float(df["t"].diff().median()) if len(df) > 1 else 1.0
-    c3.metric("Time at >= 3 cm", f"{len(above) * dt:.0f} s")
+    c3.metric("Time in Flood state", f"{len(flood) * dt:.0f} s")
     c4.metric("Excluded readings", f"{int((~df['valid']).sum())} of {len(df)}",
               help="Invalid or low-confidence readings are not used by the temporal filter.")
     st.caption("Depths are estimates from the manual calibration marks; expect errors of a few cm "

@@ -81,8 +81,8 @@ class LiveSettings:
     min_confidence: float = 0.3
     persistence_s: float = 10.0
     trend_window_s: float = 20.0
-    trigger_cm: float = 3.5
-    clear_cm: float = 2.5
+    trigger_cm: float = 10.5
+    clear_cm: float = 9.5
     rate_escalation: bool = False
 
 

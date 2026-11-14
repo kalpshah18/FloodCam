@@ -66,8 +66,8 @@ def main() -> int:
     print(f"coverage after sharpness gate: {summ['coverage']:.1%}")
     for scope in ("all_frames", "gated"):
         for name, sc in summ[scope].items():
-            d, fl = sc["depth"], sc["flood_3cm"]
-            print(f"{scope:10s} {name:20s} MAE {d['mae_cm']:.2f} cm  P {fl['precision']:.2f} R {fl['recall']:.2f}")
+            d = sc["depth"]
+            print(f"{scope:10s} {name:20s} MAE {d['mae_cm']:.2f} cm  RMSE {d['rmse_cm']:.2f}")
     print("wrote", out)
     return 0
 

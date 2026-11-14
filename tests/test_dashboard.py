@@ -413,14 +413,14 @@ def test_dashboard_file_exists_and_data_layer_importable():
 def test_severity_labels_are_text_strings():
     """Status panel uses text labels for severity — never color alone."""
     # severity_class values are string names; palette check is in test_severity_color_palette
-    for sev in ["Normal", "Advisory", "Warning", "Severe", "Critical"]:
+    for sev in ["Normal", "Warning", "Severe", "Critical"]:
         assert isinstance(sev, str) and len(sev) > 0
 
 
 def test_severity_badge_returns_string():
     """Severity badge values are non-empty text strings (accessibility: no color-only indicator)."""
     # These are the severity names the dashboard uses; each must be a non-empty text label
-    severity_names = ["Normal", "Advisory", "Warning", "Severe", "Critical"]
+    severity_names = ["Normal", "Warning", "Severe", "Critical"]
     for sev in severity_names:
         # The badge value IS the severity name string itself
         assert isinstance(sev, str) and len(sev) > 0
@@ -430,7 +430,7 @@ def test_severity_color_palette_covers_all_severities():
     """Colorblind-safe palette is defined for all severity classes; verified by reading the file."""
     dashboard_path = Path(__file__).parent.parent / "app" / "dashboard.py"
     source = dashboard_path.read_text(encoding="utf-8")
-    for sev in ["Normal", "Advisory", "Warning", "Severe", "Critical"]:
+    for sev in ["Normal", "Warning", "Severe", "Critical"]:
         assert f'"{sev}"' in source, f"Severity {sev} not found in dashboard source"
         # Verify the palette variable is referenced in the status panel section
     assert "_SEVERITY_COLOR" in source, "_SEVERITY_COLOR palette not defined in dashboard"

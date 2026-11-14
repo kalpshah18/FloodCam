@@ -54,13 +54,13 @@ SCENARIOS: list[tuple[str, list[SynthSample]]] = [
     (
         "single_spike",
         single_spike(
-            baseline_cm=1.0, spike_cm=8.0, spike_duration_s=2.0, duration_s=120, sample_interval_s=1.0, seed=4
+            baseline_cm=1.0, spike_cm=25.0, spike_duration_s=2.0, duration_s=120, sample_interval_s=1.0, seed=4
         ),
     ),
     (
         "dropout_gap",
         dropout_gap(
-            baseline_cm=5.0, gap_start_s=60, gap_duration_s=60, total_s=240, sample_interval_s=1.0, seed=5
+            baseline_cm=15.0, gap_start_s=60, gap_duration_s=60, total_s=240, sample_interval_s=1.0, seed=5
         ),
     ),
     (

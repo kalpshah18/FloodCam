@@ -78,11 +78,11 @@ def test_event_round_trip(store: EventStore) -> None:
 
 
 def test_alert_round_trip(store: EventStore) -> None:
-    store.insert_alert("run1", "cam1", 10.0, "Normal→Pending", "Advisory", 4.0)
+    store.insert_alert("run1", "cam1", 10.0, "Normal→Pending", "Warning", 11.0)
     rows = store.alerts_for_run("run1")
     assert len(rows) == 1
     assert rows[0]["transition"] == "Normal→Pending"
-    assert abs(rows[0]["depth_cm"] - 4.0) < 1e-9
+    assert abs(rows[0]["depth_cm"] - 11.0) < 1e-9
 
 
 def test_machine_state_round_trip(store: EventStore) -> None:

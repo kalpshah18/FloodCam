@@ -10,7 +10,7 @@ from pathlib import Path
 
 import numpy as np
 
-from floodcam.real.metrics import block_bootstrap_ci, block_summary, depth_metrics, flood_metrics
+from floodcam.real.metrics import block_bootstrap_ci, block_summary, depth_metrics
 from floodcam.real.plate import SiteSpec
 from floodcam.real.reader import (
     FT_TO_CM,
@@ -157,7 +157,6 @@ def summarize(ds: Dataset, res: dict) -> dict:
                            ("always_no_flood", np.zeros_like(gt))):
             sc[name] = {
                 "depth": depth_metrics(gt, pred),
-                "flood_3cm": flood_metrics(gt, pred),
                 "by_block": block_summary(blocks, gt, pred),
                 "mae_ci95_block_bootstrap": block_bootstrap_ci(blocks, gt, pred),
             }
