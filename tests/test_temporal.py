@@ -6,6 +6,7 @@ import copy
 from typing import Optional
 
 import pytest
+
 from floodcam.config import TemporalConfig
 from floodcam.synth.timeseries import (
     SynthSample,

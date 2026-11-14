@@ -25,15 +25,9 @@
 
 \author{%
   Kalp Shah \\
-  Roll Number: 24110152 \\
   Department of Electrical Engineering \\
   Indian Institute of Technology Gandhinagar \\
   \texttt{kalp.shah@iitgn.ac.in}
-  \And
-  Udit Bhatia \\
-  Department of Civil Engineering \\
-  Indian Institute of Technology Gandhinagar \\
-  \texttt{bhatia.u@iitgn.ac.in}
 }
 
 \begin{document}
@@ -60,7 +54,7 @@ How accurately can a fixed camera estimate flood water depth, and how well does 
 \section{Methods}
 \textbf{Baselines.} B0: always 0\,cm. B1: a row is wet if its colour change from the dry template exceeds a tuned $\tau$, then the decoding below.
 
-\textbf{Learned reader.} For frame $i$ and strip row $k$ (height $h_k$), a gradient-boosted classifier (scikit-learn, \citealp{sklearn}) outputs $p_{ik}=P(\text{row submerged})$ from row colour, template change, texture, context and frame quality (Fig.~\ref{fig:pipeline}). Labels are $y_{ik}=\mathbb{1}[h_k<g_i]$ ($g_i$ the gauge): no manual annotation. Water level is the monotone change point $b^\star=\arg\max_b \sum_{k<b}\log(1-p_{ik})+\sum_{k\ge b}\log p_{ik}$, mapped to height and then to centimetres by a least-squares affine fit; levels at or below the plate bottom report 0. The log-likelihood gap to the runner-up boundary is the confidence \emph{margin}.
+\textbf{Learned reader.} For frame $i$ and strip row $k$ (height $h_k$), a gradient-boosted classifier (scikit-learn, \citealp{sklearn}) outputs $p_{ik}=P(\text{row submerged})$ from row colour, template change, texture, context and frame quality (Fig.~\ref{fig:pipeline}). Labels are $y_{ik}=\mathbf{1}[h_k<g_i]$ ($g_i$ the gauge): no manual annotation. Water level is the monotone change point $b^\star=\arg\max_b \sum_{k<b}\log(1-p_{ik})+\sum_{k\ge b}\log p_{ik}$, mapped to height and then to centimetres by a least-squares affine fit; levels at or below the plate bottom report 0. The log-likelihood gap to the runner-up boundary is the confidence \emph{margin}.
 
 \textbf{Cross-camera protocol.} For each target camera the classifier is trained on the \emph{other} cameras only (labels from their nominal plate geometry); the target's dry template and gate thresholds come from its earliest month. \emph{Zero-shot} uses the nominal geometry; \emph{calibrated} fits an affine map on that month; later months are evaluated. Hancock: one level offset from \hancCalN{} development frames; \emph{pooled} adds them to training.
 

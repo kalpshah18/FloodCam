@@ -4,7 +4,7 @@
 PYTHON := python
 PYTEST := python -m pytest
 
-.PHONY: paper upload-demo setup test test-fast synth-demo calib-headless baseline temporal-demo run-demo run-demo-multi train-seg train-seg-smoke eval-seg eval dashboard lint format clean
+.PHONY: real-data real-strips real-eval real-final paper upload-demo setup test test-fast synth-demo calib-headless baseline temporal-demo run-demo run-demo-multi train-seg train-seg-smoke eval-seg eval dashboard lint format clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -49,8 +49,32 @@ train-seg-smoke:
 eval-seg:
 	$(PYTHON) scripts/eval_seg.py --backend hsv --split val --with-depth
 
-eval:
-	$(PYTHON) scripts/eval.py --config configs/default.yaml
+# ---- Real-footage study (the reported results) ------------------------------------------------
+# Splits (data/splits/usgs_*.json) and registration references (configs/sites/*_refs.json,
+# models/<site>/ref_*.jpg) are committed; do not regenerate them.
+REAL_SITES := in_overland hancock in_north oh_wetland wi_mt1
+
+real-data:
+	$(PYTHON) scripts/build_usgs_dataset.py --sites $(REAL_SITES)
+
+real-strips:
+	for s in $(REAL_SITES); do $(PYTHON) scripts/extract_strips.py --site $$s --factor 1; done
+	for f in 2 4 8 16 32 64; do $(PYTHON) scripts/extract_strips.py --site in_overland --factor $$f; done
+
+real-eval:
+	$(PYTHON) scripts/real_cv.py --site in_overland
+	for s in in_north oh_wetland wi_mt1; do $(PYTHON) scripts/real_cv.py --site $$s; done
+	$(PYTHON) scripts/real_resolution.py --site in_overland --factors 1 2 4 8 16 32 64
+	$(PYTHON) scripts/real_transfer.py --source in_overland --target hancock
+	$(PYTHON) scripts/real_multicam.py
+	$(PYTHON) scripts/real_report.py
+
+# Locked test: already run (see results/real/final_test_log.jsonl); the script refuses a repeat
+# without --force, and every run is logged.
+real-final:
+	$(PYTHON) scripts/real_final_test.py --site in_overland
+
+eval: real-eval
 
 dashboard:
 	$(PYTHON) scripts/run_demo_multi.py --run-id demo-multi-001
@@ -70,5 +94,5 @@ upload-demo:
 	streamlit run app/dashboard.py
 
 paper:
-	python scripts/make_paper_assets.py
+	$(PYTHON) scripts/make_paper_assets.py
 	cd paper && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex

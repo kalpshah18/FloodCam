@@ -16,6 +16,7 @@ import cv2
 import numpy as np
 import pytest
 import yaml
+
 from floodcam.seg.classmap import ClassMapError, load_classmap, resolve_water_ids
 from floodcam.seg.datasets import (
     SegDataset,

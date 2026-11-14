@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+
 from floodcam.config import ExperimentConfig
 from floodcam.depth.estimate import make_camera_config_for_renderer
 from floodcam.run import process_timelapse

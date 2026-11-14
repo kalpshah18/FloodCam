@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 import pytest
+
 from floodcam.config import ExperimentConfig
 from floodcam.dashboard_data import (
     alerts_up_to,

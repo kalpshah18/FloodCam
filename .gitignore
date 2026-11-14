@@ -37,6 +37,8 @@ results/*/frames/
 results/*/snapshots/
 results/*.db
 *.db
+*.db-shm
+*.db-wal
 *.pt
 *.pth
 *.ckpt

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+
 from floodcam.config import HealthConfig
 from floodcam.health import HealthChecker
 from floodcam.store.db import EventStore

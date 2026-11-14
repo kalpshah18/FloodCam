@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+
 from floodcam.io.manifest import ManifestError, ManifestRow, read_jsonl, write_jsonl
 from floodcam.synth.renderer import SceneConfig, SynthRenderer
 

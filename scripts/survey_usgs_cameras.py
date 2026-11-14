@@ -19,6 +19,7 @@ IV = "https://waterservices.usgs.gov/nwis/iv/"
 # Requests older than ~120 days are redirected (301) to nwis.waterservices.usgs.gov, which must be allowed
 # separately; the default window below stays inside what waterservices.usgs.gov serves directly.
 import datetime as _dt
+
 END = _dt.date.today().isoformat()
 START = (_dt.date.today() - _dt.timedelta(days=110)).isoformat()
 

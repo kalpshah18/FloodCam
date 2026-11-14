@@ -1,46 +1,71 @@
-# AI Use Statement
+# AI use and citations
 
-This project was developed with assistance from Claude Code (Claude Sonnet 4.6, Anthropic).
+## AI-use disclosure
 
-## Kinds of assistance
+**Tool:** Claude Code (Anthropic), an AI coding assistant, used across many sessions from
+2026-10-21 to 2026-11-14. Early milestones used Claude Sonnet 4.6; later sessions used other Claude
+models, including Claude Opus 5.5. Some sessions ran in Anthropic's cloud sandbox, the rest locally.
 
-- **Scaffolding**: Repo structure, boilerplate Python packages, Makefile, config system.
-- **Code generation**: Config dataclasses, split generation script, test fixtures, seeding utility, synthetic renderer, manifest schema, LOSO split generator, calibration module (LinearCalib OLS, HomographyCalib normalized DLT, depth uncertainty propagation, annotation CLI), HSV baseline mask, waterline detection, depth estimator (M4), temporal filter, state machine, severity classification (M5), SQLite store, runner, health checks, timelapse renderer (M6), dashboard data layer, Streamlit dashboard, multi-camera demo (M7).
-- **Documentation**: DECISIONS.md entries, protocol stubs.
+**Kinds of assistance**
 
-## External code and model weights
+| Area | What the assistant did |
+|---|---|
+| Planning | Brainstorming the method, evaluation protocol and milestones; recording decisions in `docs/DECISIONS.md` |
+| Code | Most of the code in `src/`, `scripts/`, `app/` and `tests/`: synthetic generator, calibration, HSV baseline, temporal filter and state machine, SQLite store, dashboard, SegFormer scripts, and the real-footage pipeline (registration, plate rectification, row features, gradient-boosting reader, decoding, quality gate, experiments, report) |
+| Data | Searching for public data sources (`docs/DATA_SOURCES.md`), writing the USGS download and label scripts, drawing initial plate geometry |
+| Experiments | Running the scripts that produce `results/` and logging runs in `docs/EXPERIMENT_LOG.md` |
+| Debugging and review | Diagnosing failures, writing regression tests, reviewing the project |
+| Writing | Documentation, and drafting `paper/main.tex` |
 
-| Item | Source | License |
-|------|--------|---------|
-| SegFormer-B0 weights | `nvidia/mit-b0` via Hugging Face Hub | NVIDIA Source Code License |
-| SegFormer-B1 weights | `nvidia/mit-b1` via Hugging Face Hub | NVIDIA Source Code License |
-| ADE20K dataset | MIT CSAIL | CC BY 4.0 |
-| COCO-Stuff dataset | nightrome/cocostuff | CC BY 4.0 |
-| FloodNet dataset | BinaLab/FloodNet | CC BY-SA 4.0 |
+**What the student did and is responsible for:** choosing the project and its direction, deciding
+on the changes of plan (for example the switch from synthetic data to real USGS footage), checking the
+pipeline through the unit tests and by inspecting rectified strips, failure cases and split leakage,
+and taking responsibility for every result and claim.
 
-## Milestone 8 additions
+**Safeguards on the numbers.** No metric in the paper or the results files was typed by hand, by the
+student or by the assistant. Every number is written by a script into `results/` and copied into the
+paper as a LaTeX macro by `scripts/make_paper_assets.py`. Splits are committed and the locked test is
+logged (`results/real/final_test_log.jsonl`), so the reported numbers can be regenerated and checked.
 
-Claude Code (Anthropic) wrote the SegFormer backend, dataset adapters, training/eval scripts,
-tests and docs in this milestone. Model architecture: Hugging Face `transformers`
-(Apache-2.0) SegFormer implementation. Weights are not bundled; the user downloads
-`nvidia/mit-b0` / `nvidia/mit-b1` (or an ADE-pretrained SegFormer) at training time and must
-check each model card's licence. **The dataset licence column above was written from memory
-and is unverified**; the authoritative per-dataset status is `data/public/DATASETS.md`
-(`license_verified`).
+## Data used in the reported results
 
-## External data and code used (2026-10-28)
+| Item | Source | Licence |
+|---|---|---|
+| Gauge-camera frames | USGS National Imagery Management System (NIMS), public S3 bucket `usgs-nims-images` | Public domain (US Government work) |
+| Gauge height (labels) | USGS National Water Information System (NWIS) | Public domain (US Government work) |
+| Gauge-height tables for in_overland and hancock | Copied from the committed result tables of [`tanayvasishtha/waterline`](https://github.com/tanayvasishtha/waterline) (Apache-2.0, commit a77a74c) and [`Waqar-msx9t/stagesight`](https://github.com/Waqar-msx9t/stagesight) (MIT, commit e9b10429). The values are USGS NWIS gauge readings; no code from these repositories is used | Apache-2.0 / MIT (the underlying values are public domain) |
+| Initial plate geometry for in_overland | Started from the plate quadrilateral in waterline's `sites/in_overland.json`, then corrected by eye | Apache-2.0 |
 
-- USGS NIMS gauge-camera frames and USGS gage height: public domain (US Government works).
-- Gauge-height tables taken from committed outputs of `tanayvasishtha/waterline` (Apache-2.0) and
-  `Waqar-msx9t/stagesight` (MIT); their code is not used. Plate geometry started from the quad in
-  waterline's `sites/in_overland.json` and was then corrected by eye on the reference frame.
-- `xmlyqing00/V-FloodNet`, `cvjena/eu-flood-dataset` were cloned for inspection only; no data from
-  them is used (their data hosts are not reachable from the sandbox).
-- Libraries: OpenCV (SIFT, Apache-2.0), scikit-learn HistGradientBoosting (BSD-3), Streamlit,
-  streamlit-image-coordinates (MIT).
+Details and attribution text: `data/usgs/README.md`, `docs/DATA_SOURCES.md`.
 
-## Notes
+## Software
 
-All research claims, metric numbers, and split definitions are generated by
-project scripts, not hand-typed. AI assistance was used for code structure
-and boilerplate only, not for experimental results.
+| Library | Use | Licence |
+|---|---|---|
+| NumPy, SciPy | Arrays, numerics | BSD-3-Clause |
+| scikit-learn (`HistGradientBoostingClassifier`) | Row classifier | BSD-3-Clause |
+| OpenCV (SIFT, homography, image I/O) | Registration and rectification | Apache-2.0 |
+| pandas, joblib | Tables, model serialisation | BSD-3-Clause |
+| Matplotlib | Figures | Matplotlib licence (PSF-based) |
+| Streamlit, Altair, streamlit-image-coordinates | Dashboard | Apache-2.0, BSD-3-Clause, MIT |
+| Pillow, PyYAML | Images, configs | MIT-CMU, MIT |
+| pytest, ruff | Tests, lint | MIT |
+| NeurIPS 2026 LaTeX style (`paper/neurips_2026.sty`) | Paper layout, supplied unmodified by the course starter kit | NeurIPS author kit |
+
+## Methods and papers cited
+
+- D. G. Lowe, "Distinctive image features from scale-invariant keypoints" (SIFT), IJCV 60(2), 2004.
+- F. Pedregosa et al., "Scikit-learn: Machine learning in Python", JMLR 12, 2011.
+- R. Vandaele et al., river-level monitoring from camera images, HESS 25, 2021.
+- Y. Liang et al., V-FloodNet: urban flood video segmentation, Environmental Modelling & Software, 2023.
+
+## Referenced but not used in any result
+
+- SegFormer (Hugging Face `transformers`, Apache-2.0) with `nvidia/mit-b0` / `nvidia/mit-b1` weights:
+  the training scripts exist (`scripts/train_seg.py`), but no weights were downloaded and no
+  SegFormer result is reported. Check the model card licence before using the weights.
+- ADE20K, COCO-Stuff and FloodNet: adapters exist in `src/floodcam/seg/`, but none of these datasets
+  was downloaded. Confirm each licence on its official page before use.
+- [`xmlyqing00/V-FloodNet`](https://github.com/xmlyqing00/V-FloodNet) and
+  [`cvjena/eu-flood-dataset`](https://github.com/cvjena/eu-flood-dataset): cloned for reading only;
+  no code or data from them is used.

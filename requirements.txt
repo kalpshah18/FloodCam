@@ -1,21 +1,26 @@
-# Core
-numpy==1.26.4
-opencv-python==4.9.0.80
-pyyaml==6.0.1
-scikit-learn==1.4.2
-streamlit==1.40.2
-streamlit-image-coordinates==0.4.1
-altair==5.5.0
-matplotlib==3.9.0
-pandas==2.2.2
-pillow==10.3.0
+# Verified 2026-11-14 on Windows 11, Python 3.12, in a fresh virtual environment:
+# the trained model (models/*/reader.joblib) loads and the test suite passes with these versions.
+# The model bundle was saved with scikit-learn 1.9.1 and NumPy 2.x; older versions cannot load it.
+# Python 3.11+ is required (the reported results were produced on Python 3.13).
 
-# ML (heavy; install separately or with: pip install -r requirements.txt)
-torch==2.2.2
-transformers==4.40.2
-timm==0.9.16
-accelerate==0.30.0
+# Core: everything needed for the real-footage pipeline, the paper assets and the dashboard
+numpy==2.5.4
+scipy==1.18.1
+scikit-learn==1.9.1
+joblib==1.6.0
+opencv-python-headless==5.0.0.93
+pandas==3.1.1
+matplotlib==3.11.2
+pyyaml==6.0.3
+pillow==13.0.0
+streamlit==1.67.0
+streamlit-image-coordinates==0.4.1
+altair==6.3.0
 
 # Dev
-pytest==8.2.1
-ruff==0.4.7
+pytest==9.2.0
+ruff==0.17.5
+
+# Optional, NOT needed for any reported result: the SegFormer track (src/floodcam/seg, scripts/train_seg.py)
+# needs torch + transformers. Install with `pip install -e ".[ml]"`; see docs/TRAINING_AWS.md.
+# Its tests are skipped automatically when torch is missing.

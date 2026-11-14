@@ -8,11 +8,11 @@
 > scripts) still apply and are implemented in the real-footage pipeline.
 
 ## Project
-ES 678 (graduate ML) course project. Student: Kalp Shah, 24110152.
+ES 678 (graduate ML) course project. Student: Kalp Shah.
 Title: Estimating Shallow Flood Depth from Fixed-Camera Video via Water Segmentation and Calibrated Geometry.
 
 ## Deliverable in this phase
-A reproducible ML pipeline plus a dashboard. The LaTeX paper is NOT part of this phase. Do not write or scaffold the paper. The paper will be written later from this repo, so every result, split, config, and decision must be stored in files that a later session can read.
+A reproducible ML pipeline plus a dashboard. Every result, split, config, and decision must be stored in files that a later session can read.
 
 Pipeline: video -> frame sampling -> water segmentation -> ROI -> calibrated depth -> temporal filter -> state machine -> SQLite event log -> Streamlit dashboard.
 
