@@ -53,9 +53,6 @@ Mean absolute error in cm on frames that pass the quality gate. Every value on t
 
 Brackets are 95% intervals from a bootstrap over whole months. The two locked months are too few to give an interval. The gate drops {{ n.dropDev }}% of CV frames and {{ n.dropLocked }}% of locked frames; without it the errors are {{ n.maeDevAll }} cm (CV) and {{ n.maeLockedAll }} cm (locked). See [Results]({% link results.md %}) for the full breakdown.
 
-{: .limit }
-The effective sample size is the number of months per camera, not the number of frames. Labels are a gauge beside the plate, not tape measurements, and water below the plate bottom ({{ n.plateBottomCm }} cm) cannot be seen. The locked months were evaluated twice, and the reason is disclosed in [Limitations]({% link limitations.md %}).
-
 ## Where to go next
 
 | | |
