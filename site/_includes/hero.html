@@ -1,0 +1,17 @@
+{% assign n = site.data.numbers %}
+<div class="hero">
+  <h1>Reading Shallow Flood Depth from Real USGS Gauge-Camera Footage with a Learned Staff-Plate Reader</h1>
+  <p class="byline">Kalp Shah &middot; Department of Electrical Engineering, IIT Gandhinagar</p>
+  <div class="buttons">
+    <a class="btn btn-primary" href="{{ '/assets/paper.pdf' | relative_url }}">Paper (PDF)</a>
+    <a class="btn" href="{% link demo.md %}">Try the demo</a>
+    <a class="btn" href="https://github.com/kalpshah18/FloodCam">Code</a>
+    <a class="btn" href="{% link paper.md %}#cite">BibTeX</a>
+  </div>
+  <div class="stat-row">
+    <div class="stat"><div class="num">{{ n.maeDevGated }} <small>cm</small></div><div class="lab">mean absolute error, held-out months, frames that pass the quality gate</div></div>
+    <div class="stat"><div class="num">{{ n.maeLockedGated }} <small>cm</small></div><div class="lab">same, on two locked test months</div></div>
+    <div class="stat"><div class="num">{{ n.covDev }}<small>%</small></div><div class="lab">of frames pass the gate; the reader abstains on the rest</div></div>
+    <div class="stat"><div class="num">{{ n.resSF }} <small>cm/px</small></div><div class="lab">resolution at which error is still under twice the native error</div></div>
+  </div>
+</div>
