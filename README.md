@@ -4,7 +4,7 @@ Reading water depth from fixed-camera footage of a staff plate, evaluated on rea
 against the official gauge height.
 
 ES 678 (Machine Learning) course project, Kalp Shah, IIT Gandhinagar.
-Paper: [`paper/main.pdf`](paper/main.pdf) (4 pages).
+Paper: [`paper/main.pdf`](paper/main.pdf) (4 pages). Project website with an in-browser demo: <https://kalpshah18.github.io/FloodCam/> (source in `site/`, see `docs/DECISIONS.md`).
 
 ## Contents
 
@@ -18,6 +18,7 @@ Paper: [`paper/main.pdf`](paper/main.pdf) (4 pages).
 | `configs/sites/` | Plate geometry per camera |
 | `app/` | Streamlit dashboard: replay of real USGS footage, upload-a-video mode, recorded runs |
 | `paper/` | LaTeX source; every number is a macro generated from `results/` |
+| `site/` | Project website (Jekyll, Just the Docs). `make site` regenerates its data and images from `results/` and `paper/` |
 | `docs/` | `DECISIONS.md` (every non-obvious choice and why), `EXPERIMENT_LOG.md`, `DATA_SOURCES.md`, `FUTURE_GUIDE.md` (full technical guide) |
 | `tests/` | Unit and integration tests |
 | `src/floodcam/{synth,calib,depth,temporal,store,seg}` | The earlier synthetic-data pipeline and dashboard back end. Synthetic data is used only in tests and demos, never in reported results |

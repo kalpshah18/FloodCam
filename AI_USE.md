@@ -3,7 +3,7 @@
 ## AI-use disclosure
 
 **Tool:** Claude Code (Anthropic), an AI coding assistant, used across many sessions from
-2026-10-21 to 2026-11-14. Early milestones used Claude Sonnet 4.6; later sessions used other Claude
+2026-10-21 to 2026-11-15. Early milestones used Claude Sonnet 4.6; later sessions used other Claude
 models, including Claude Opus 5.5. Some sessions ran in Anthropic's cloud sandbox, the rest locally.
 
 **Kinds of assistance**
@@ -16,6 +16,7 @@ models, including Claude Opus 5.5. Some sessions ran in Anthropic's cloud sandbo
 | Experiments | Running the scripts that produce `results/` and logging runs in `docs/EXPERIMENT_LOG.md` |
 | Debugging and review | Diagnosing failures, writing regression tests, reviewing the project |
 | Writing | Documentation, and drafting `paper/main.tex` |
+| Website | The project website in `site/` (Jekyll, Just the Docs theme), its asset-build script, the in-browser demo and its deployment workflow (2026-11-15) |
 
 **What the student did and is responsible for:** choosing the project and its direction, deciding
 on the changes of plan (for example the switch from synthetic data to real USGS footage), checking the

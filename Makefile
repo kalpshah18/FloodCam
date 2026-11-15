@@ -4,7 +4,7 @@
 PYTHON := python
 PYTEST := python -m pytest
 
-.PHONY: real-data real-strips real-eval real-final paper upload-demo setup test test-fast synth-demo calib-headless baseline temporal-demo run-demo run-demo-multi train-seg train-seg-smoke eval-seg eval dashboard lint format clean
+.PHONY: site site-serve real-data real-strips real-eval real-final paper upload-demo setup test test-fast synth-demo calib-headless baseline temporal-demo run-demo run-demo-multi train-seg train-seg-smoke eval-seg eval dashboard lint format clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -96,3 +96,10 @@ upload-demo:
 paper:
 	$(PYTHON) scripts/make_paper_assets.py
 	cd paper && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex
+
+# Project website (site/, Jekyll + Just the Docs). Assets are generated from results/ and paper/.
+site:
+	$(PYTHON) scripts/build_site_assets.py
+
+site-serve:
+	cd site && bundle exec jekyll serve --livereload

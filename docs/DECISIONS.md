@@ -460,3 +460,25 @@ changed: in_north median 3 cm/est. 0, oh_wetland median 30 cm/est. 0 (another fr
 wi_mt1 median 2 cm/est. 0 (was 8/6), wi_mt1 worst 0 cm/est. 69 cm (another frame, same values; the
 stored LOCO predictions order tied rows differently from the run that drew the old figure). The
 file lists are in `fig_*_files.json`.
+
+## 2026-11-15: Project website in `site/`, Jekyll + Just the Docs, static in-browser demo
+
+**Decision:** The project site lives in `site/` (not `docs/`, which holds project notes), uses the Just the
+Docs theme, and is deployed to `kalpshah18.github.io/FloodCam` by a GitHub Actions workflow
+(`.github/workflows/pages.yml`) when `site/` changes on `main`. Branch work happens on `project-website`.
+**Alternatives:** Minimal Mistakes (nicer splash page, weaker for multi-page technical content), al-folio
+(built for a personal academic homepage), publishing from `/docs` (would mix site and notes).
+**Numbers:** nothing on the site is typed by hand. `scripts/build_site_assets.py` parses `paper/numbers.tex`
+(itself generated from `results/`), reads `results/real/*/metrics.json` and `tables/*.csv`, and renders the
+paper figures to PNG. Pages use Liquid over `site/_data/*.json`. The built assets are committed so CI needs
+only Ruby.
+**Demo:** static and in the browser. It replays the 68 committed demo frames with the leave-one-month-out
+estimate stored in `data/usgs/demo/demo.csv` next to the USGS gauge height; the plate outline and strip are
+re-derived from the 640 px copies with the project's own registration code for display only. It does **not**
+run `models/in_overland/reader.joblib`, because that model was trained on all months including the locked ones
+and would be in-sample here. Per-row probabilities were not shown because the held-out fold model cannot be
+rebuilt without the full frame set. A hosted Streamlit app and Pyodide were considered and not done (Pyodide:
+unpinned scikit-learn makes the joblib model fragile).
+**State-machine playground:** a JavaScript port of `temporal/filter.py` and `temporal/state_machine.py`
+with the default thresholds; labelled as a demonstration, not an evaluated claim.
+

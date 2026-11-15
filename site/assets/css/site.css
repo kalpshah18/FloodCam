@@ -1,0 +1,67 @@
+/* Project-site styles layered on Just the Docs. Colours reuse the theme's light palette. */
+:root {
+  --fc-accent: #2c5282;
+  --fc-muted: #5c5f66;
+  --fc-line: #e6e1e8;
+  --fc-good: #2f855a;
+  --fc-bad: #c53030;
+  --fc-warn: #b7791f;
+  --fc-gauge: #0b7285;
+  --fc-reader: #d9480f;
+}
+
+/* ---- landing hero ---- */
+.hero { margin: 0 0 2rem; }
+.hero h1 { font-size: 2rem; line-height: 1.25; margin-bottom: .5rem; }
+.hero .byline { color: var(--fc-muted); margin: 0 0 1.2rem; }
+.hero .buttons { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.5rem; }
+.hero .buttons a { text-decoration: none; }
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; margin: 1.5rem 0; }
+.stat { border: 1px solid var(--fc-line); border-radius: 6px; padding: .75rem .9rem; background: #fff; }
+.stat .num { font-size: 1.7rem; font-weight: 600; color: var(--fc-accent); line-height: 1.1; }
+.stat .num small { font-size: .9rem; font-weight: 500; color: var(--fc-muted); }
+.stat .lab { font-size: .8rem; color: var(--fc-muted); margin-top: .25rem; }
+
+/* ---- figures ---- */
+figure { margin: 1.5rem 0; }
+figure img { max-width: 100%; height: auto; border: 1px solid var(--fc-line); border-radius: 4px; background: #fff; }
+figure figcaption { font-size: .85rem; color: var(--fc-muted); margin-top: .4rem; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .75rem; }
+.gallery figure { margin: 0; }
+.gallery figcaption { font-size: .75rem; }
+
+/* ---- tables ---- */
+.table-wrap { overflow-x: auto; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- demo ---- */
+.demo { border: 1px solid var(--fc-line); border-radius: 8px; padding: 1rem; margin: 1.5rem 0; background: #fff; }
+.demo h3 { margin-top: 0; }
+.demo-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 1rem; align-items: start; }
+@media (max-width: 700px) { .demo-grid { grid-template-columns: 1fr; } }
+.demo canvas, .demo img { max-width: 100%; display: block; }
+.demo .frame-box { position: relative; }
+.demo .frame-box img { width: 100%; height: auto; border-radius: 4px; }
+.demo .strip-box { display: flex; justify-content: center; }
+.demo .strip-box canvas { image-rendering: pixelated; border: 1px solid var(--fc-line); }
+.demo .controls { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin: .75rem 0; }
+.demo .controls input[type=range] { flex: 1 1 220px; }
+.demo button.btn-sm { padding: .25rem .8rem; font-size: .85rem; cursor: pointer; }
+.readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .5rem; margin: .75rem 0; }
+.readout div { border: 1px solid var(--fc-line); border-radius: 6px; padding: .4rem .6rem; font-size: .8rem; color: var(--fc-muted); }
+.readout b { display: block; font-size: 1.15rem; color: #222; font-variant-numeric: tabular-nums; }
+.readout .gauge b { color: var(--fc-gauge); }
+.readout .reader b { color: var(--fc-reader); }
+.badge { display: inline-block; padding: .1rem .5rem; border-radius: 10px; font-size: .75rem; font-weight: 600; }
+.badge.ok { background: #e6f4ea; color: var(--fc-good); }
+.badge.rej { background: #fdeaea; color: var(--fc-bad); }
+.badge.info { background: #edf2f7; color: #4a5568; }
+.legend { font-size: .8rem; color: var(--fc-muted); display: flex; gap: 1rem; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 4px; }
+.note-small { font-size: .8rem; color: var(--fc-muted); }
+.state-pill { display: inline-block; padding: .15rem .7rem; border-radius: 12px; color: #fff; font-weight: 600; font-size: .85rem; }
+.sm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .5rem 1rem; margin: .5rem 0; }
+.sm-grid label { font-size: .8rem; color: var(--fc-muted); display: block; }
+.sm-grid input[type=range] { width: 100%; }
+#sm-log { font-size: .8rem; max-height: 9rem; overflow-y: auto; border: 1px solid var(--fc-line); border-radius: 4px; padding: .4rem .6rem; margin-top: .5rem; }
+.noscript { padding: 1rem; border: 1px dashed var(--fc-warn); border-radius: 6px; }
