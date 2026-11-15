@@ -87,7 +87,7 @@ Gated MAE for each held-out month (leave-one-month-out CV). Bars are scaled to t
 
 ## Resolution sweep
 
-Registration is computed once at native resolution. Frames are then area-downsampled by a factor \(f\) from 1 to 64, the plate is resampled with 360/\(f\) rows, and the reader is retrained for each \(f\). Plate scale is \(s = {{ n.sNative }} f\) cm per pixel.
+Registration is computed once at native resolution. Frames are then area-downsampled by a factor $$f$$ from 1 to 64, the plate is resampled with 360/$$f$$ rows, and the reader is retrained for each $$f$$. Plate scale is $$s = {{ n.sNative }} f$$ cm per pixel.
 
 <div class="table-wrap" markdown="0">
 <table>
@@ -100,7 +100,7 @@ Registration is computed once at native resolution. Frames are then area-downsam
 </table>
 </div>
 
-Gated MAE is {{ n.resMaeA }} cm at native scale, {{ n.resMaeE }} cm at {{ n.resSE }} cm/px, {{ n.resMaeF }} cm at {{ n.resSF }} cm/px and {{ n.resMaeG }} cm at {{ n.resSG }} cm/px, which is over twice native. With scale \(s\) and waterline error \(\sigma_v\), \(\mathrm{Var}(\hat h) = s^2\sigma_v^2 + \sigma_g^2\). Fitting RMSE² to the gated sweep gives \(\sigma_v = {{ n.sigmaV }}\) px and \(\sigma_g = {{ n.sigmaFloor }}\) cm. The \(\sigma_g\) floor dominates at fine scales, so resolution is not the binding constraint at this camera.
+Gated MAE is {{ n.resMaeA }} cm at native scale, {{ n.resMaeE }} cm at {{ n.resSE }} cm/px, {{ n.resMaeF }} cm at {{ n.resSF }} cm/px and {{ n.resMaeG }} cm at {{ n.resSG }} cm/px, which is over twice native. With scale $$s$$ and waterline error $$\sigma_v$$, $$\mathrm{Var}(\hat h) = s^2\sigma_v^2 + \sigma_g^2$$. Fitting RMSE² to the gated sweep gives $$\sigma_v = {{ n.sigmaV }}$$ px and $$\sigma_g = {{ n.sigmaFloor }}$$ cm. The $$\sigma_g$$ floor dominates at fine scales, so resolution is not the binding constraint at this camera.
 
 You can see what coarser scales do to the plate in the [demo]({% link demo.md %}#resolution).
 

@@ -131,17 +131,17 @@
       g.fillRect(ML - 5, y, 5, 1);
     }
     g.fillStyle = C.text; g.textAlign = 'right'; g.fillText('cm', ML - 8, 8);
-    function level(cm, color, dash, label) {
+    function level(cm, color, dash, label, below) {
       var y = cmToY(cm, H);
       g.save(); g.strokeStyle = color; g.lineWidth = 2; g.setLineDash(dash);
       g.beginPath(); g.moveTo(ML, y); g.lineTo(ML + W, y); g.stroke(); g.restore();
       g.textAlign = 'right'; g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.9)';
-      var ty = clamp(y - 8, 8, H - 8);
+      var ty = clamp(below ? y + 9 : y - 9, 8, H - 8);
       g.strokeText(label, ML + W - 3, ty); g.fillStyle = color; g.fillText(label, ML + W - 3, ty);
     }
     level(f.gauge_cm, C.gauge, [], 'gauge ' + fmt(f.gauge_cm));
-    if (f.accepted) level(f.reader_cm, C.reader, [5, 3], 'reader ' + fmt(f.reader_cm));
-    else level(f.reader_cm, C.rej, [2, 3], 'rejected');
+    if (f.accepted) level(f.reader_cm, C.reader, [5, 3], 'reader ' + fmt(f.reader_cm), true);
+    else level(f.reader_cm, C.rej, [2, 3], 'rejected', true);
     $('ex-strip-note').textContent = f.has_strip ? '' : 'No plate position available for this frame.';
   }
 

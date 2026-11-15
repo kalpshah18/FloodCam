@@ -40,9 +40,9 @@ callouts:
     title: Caution
     color: red
 
-# kramdown leaves $$...$$ alone as \( \) / \[ \] so MathJax (see _includes/head_custom.html) renders it
+# kramdown wraps $$...$$ in <script type="math/tex">; _includes/head_custom.html hands those to MathJax 3
 kramdown:
-  math_engine: null
+  math_engine: mathjax
   syntax_highlighter_opts:
     block:
       line_numbers: false

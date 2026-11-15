@@ -1,5 +1,22 @@
 <script>
-  window.MathJax = { tex: { inlineMath: [['\(', '\)']], displayMath: [['\[', '\]']] } };
+  // kramdown turns $$...$$ into <script type="math/tex">; MathJax 3 ignores those, so rewrite them
+  // as \( \) / \[ \] text just before MathJax starts. Raw \( \) in HTML pages also works.
+  window.MathJax = {
+    tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+    startup: {
+      ready: function () {
+        var dec = document.createElement('textarea');
+        document.querySelectorAll('script[type^="math/tex"]').forEach(function (s) {
+          dec.innerHTML = s.textContent;
+          var display = /mode=display/.test(s.type);
+          var el = document.createElement(display ? 'div' : 'span');
+          el.textContent = display ? '\\[' + dec.value + '\\]' : '\\(' + dec.value + '\\)';
+          s.parentNode.replaceChild(el, s);
+        });
+        MathJax.startup.defaultReady();
+      }
+    }
+  };
 </script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 <link rel="icon" type="image/svg+xml" href="{{ '/assets/img/favicon.svg' | relative_url }}">
