@@ -24,7 +24,7 @@ aux_links:
 aux_links_new_tab: true
 
 footer_content: >-
-  FloodCam is a project by Kalp Shah and Udit Bhatia, IIT Gandhinagar.
+  FloodCam is a project by Kalp Shah, IIT Gandhinagar.
   USGS imagery and gauge data are public domain. Code and results:
   <a href="https://github.com/kalpshah18/FloodCam">github.com/kalpshah18/FloodCam</a>.
 

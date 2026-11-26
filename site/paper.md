@@ -8,7 +8,7 @@ description: "The four-page paper (PDF) and a BibTeX entry."
 # Paper
 {: .no_toc }
 
-*Reading Shallow Flood Depth from Real USGS Gauge-Camera Footage with a Learned Staff-Plate Reader.* Kalp Shah and Udit Bhatia, IIT Gandhinagar (2026). Four pages, NeurIPS-style preprint format.
+*Reading Shallow Flood Depth from Real USGS Gauge-Camera Footage with a Learned Staff-Plate Reader.* Kalp Shah, IIT Gandhinagar (2026). Four pages, NeurIPS-style preprint format.
 
 <p>
   <a class="btn btn-primary" href="{{ '/assets/paper.pdf' | relative_url }}">Download PDF</a>
@@ -25,7 +25,7 @@ Every number, table and figure in the paper is regenerated from `results/` by `s
 
 ```bibtex
 @misc{shah2026floodcam,
-  author       = {Shah, Kalp and Bhatia, Udit},
+  author       = {Shah, Kalp},
   title        = {Reading Shallow Flood Depth from Real {USGS} Gauge-Camera Footage
                   with a Learned Staff-Plate Reader},
   year         = {2026},
